@@ -1,0 +1,22 @@
+{
+  "feature_columns": [
+    "Air temperature [K]",
+    "Process temperature [K]",
+    "Rotational speed [rpm]",
+    "Torque [Nm]",
+    "Tool wear [min]"
+  ],
+  "target_column": "Machine failure",
+  "mode_columns": [
+    "TWF",
+    "HDF",
+    "PWF",
+    "OSF",
+    "RNF"
+  ],
+  "id_columns": [
+    "UDI",
+    "Product ID",
+    "Type"
+  ]
+}
