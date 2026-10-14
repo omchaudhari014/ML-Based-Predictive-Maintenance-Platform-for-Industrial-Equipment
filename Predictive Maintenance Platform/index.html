@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SENTINEL PdM — Predictive Maintenance &amp; Digital Twin Console</title>
+  <meta name="description" content="AI-powered predictive maintenance console with interactive 3D digital twin, SHAP explainability and prescriptive repair guidance." />
+
+  <!-- ── Fonts ───────────────────────────────────────────────────────────── -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap"
+    rel="stylesheet" />
+
+  <!-- ── Tailwind CSS (CDN) ──────────────────────────────────────────────── -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    /* Design tokens are declared here so Tailwind utilities and the custom
+       stylesheet share one vocabulary (see :root in styles.css). */
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            void:    '#07090d',   // page background
+            steel:   '#0e131b',   // raised surface
+            iron:    '#151c27',   // panel surface
+            hairline:'#212b3a',   // borders
+            ok:      '#10b981',   // healthy   (emerald)
+            warn:    '#f59e0b',   // warning   (amber)
+            crit:    '#e11d48',   // critical  (crimson)
+            probe:   '#22d3ee',   // instrument accent (cyan)
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
+          },
+          boxShadow: {
+            panel: '0 1px 0 0 rgba(255,255,255,.04) inset, 0 18px 40px -24px rgba(0,0,0,.9)',
+          },
+        },
+      },
+    };
+  </script>
+
+  <!-- ── 3D Digital Twin renderer ────────────────────────────────────────── -->
+  <script
+    type="module"
+    src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
+
+  <!-- ── Icons ───────────────────────────────────────────────────────────── -->
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+
+  <link rel="stylesheet" href="styles.css" />
+</head>
+
+<body class="bg-void text-slate-200 font-sans antialiased selection:bg-probe/30">
+
+  <!-- ══════════════════════════════════════════════════════════════════════
+       GLOBAL HEADER
+       ══════════════════════════════════════════════════════════════════ -->
+  <header class="sticky top-0 z-40 border-b border-hairline/80 bg-void/85 backdrop-blur-xl">
+    <div class="mx-auto flex max-w-[1800px] flex-wrap items-center gap-x-6 gap-y-3 px-4 py-3 lg:px-7">
+
+      <!-- Brand -->
+      <div class="flex items-center gap-3">
+        <div class="grid h-10 w-10 place-items-center rounded-lg bg-probe/10 ring-1 ring-probe/30">
+          <i data-lucide="radar" class="h-5 w-5 text-probe"></i>
+        </div>
+        <div class="leading-tight">
+          <h1 class="text-[15px] font-extrabold tracking-tight text-white">SENTINEL <span class="text-probe">PdM</span></h1>
+          <p class="micro-label text-slate-500">Bay 4 · Assembly North</p>
+        </div>
+      </div>
+
+      <!-- Plant status pill -->
+      <div id="plant-status" class="status-pill status-pill--ok">
+        <span class="dot dot--pulse"></span>
+        <span id="plant-status-text">System Operational</span>
+      </div>
+
+      <!-- Header stat readouts -->
+      <div class="hidden items-center gap-6 md:flex">
+        <div class="header-stat">
+          <span class="micro-label text-slate-500">Active Machines</span>
+          <strong id="hdr-machine-count" class="font-mono text-lg font-bold text-white tabular-nums">—</strong>
+        </div>
+        <div class="h-8 w-px bg-hairline"></div>
+        <div class="header-stat">
+          <span class="micro-label text-slate-500">Critical Alerts</span>
+          <strong id="hdr-critical-count" class="font-mono text-lg font-bold text-crit tabular-nums">—</strong>
+        </div>
+      </div>
+
+      <!-- Search + profile -->
+      <div class="ml-auto flex items-center gap-3">
+        <label class="relative hidden sm:block">
+          <i data-lucide="search" class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500"></i>
+          <input
+            id="fleet-search"
+            type="search"
+            placeholder="Search asset, ID or serial…"
+            class="w-56 rounded-lg border border-hairline bg-steel/80 py-2 pl-9 pr-3 text-sm text-slate-200 placeholder:text-slate-500 focus:border-probe/60 focus:outline-none focus:ring-2 focus:ring-probe/20 lg:w-72" />
+        </label>
+
+        <!-- Backend connectivity indicator (mock vs live) -->
+        <div id="api-badge" class="api-badge api-badge--mock" title="Flask backend connectivity">
+          <i data-lucide="unplug" class="h-3.5 w-3.5"></i>
+          <span id="api-badge-text">MOCK STREAM</span>
+        </div>
+
+        <button class="relative grid h-9 w-9 place-items-center rounded-lg border border-hairline bg-steel/80 text-slate-400 transition hover:text-probe">
+          <i data-lucide="bell" class="h-4 w-4"></i>
+          <span id="bell-badge" class="absolute -right-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-crit px-1 font-mono text-[10px] font-bold text-white">0</span>
+        </button>
+
+        <!-- Technician badge -->
+        <div class="flex items-center gap-2.5 rounded-lg border border-hairline bg-steel/80 py-1.5 pl-1.5 pr-3">
+          <span class="grid h-7 w-7 place-items-center rounded-md bg-gradient-to-br from-probe/80 to-emerald-500/70 font-mono text-xs font-bold text-void">JG</span>
+          <div class="hidden leading-tight lg:block">
+            <p class="text-xs font-semibold text-white">J. Gangurde</p>
+            <p class="micro-label text-slate-500">Tech L3 · #4471</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── View navigation ─────────────────────────────────────────────── -->
+    <nav class="mx-auto max-w-[1800px] px-4 lg:px-7" aria-label="Primary views">
+      <ul class="-mb-px flex gap-1 overflow-x-auto">
+        <li>
+          <button class="nav-tab is-active" data-view="fleet" aria-current="page">
+            <i data-lucide="layout-grid" class="h-4 w-4"></i> Fleet Overview
+          </button>
+        </li>
+        <li>
+          <button class="nav-tab" data-view="diagnostic">
+            <i data-lucide="activity" class="h-4 w-4"></i> Machine Diagnostics
+            <span id="nav-diag-machine" class="hidden font-mono text-[11px] text-probe md:inline"></span>
+          </button>
+        </li>
+        <li>
+          <button class="nav-tab" data-view="repair">
+            <i data-lucide="wrench" class="h-4 w-4"></i> Repair &amp; Action Hub
+          </button>
+        </li>
+      </ul>
+    </nav>
+  </header>
+
+  <main class="mx-auto max-w-[1800px] px-4 py-6 lg:px-7 lg:py-8">
+
+    <!-- ══════════════════════════════════════════════════════════════════
+         VIEW 1 — MACRO OVERVIEW (PLANT DASHBOARD)
+         ══════════════════════════════════════════════════════════════ -->
+    <section id="view-fleet" class="view" data-view="fleet">
+
+      <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p class="micro-label text-probe">Macro Overview</p>
+          <h2 class="mt-1 text-2xl font-bold tracking-tight text-white lg:text-3xl">Plant Health Dashboard</h2>
+          <p class="mt-1 text-sm text-slate-400">
+            Rolling 24 h window · telemetry refreshed every <span class="font-mono text-slate-300">3 s</span>
+          </p>
+        </div>
+        <div class="flex items-center gap-2 font-mono text-xs text-slate-500">
+          <span class="dot dot--pulse bg-probe"></span>
+          Last sync <span id="last-sync" class="text-slate-300">—</span>
+        </div>
+      </div>
+
+      <!-- KPI summary cards -->
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+
+        <article class="kpi-card" data-accent="ok">
+          <header>
+            <span class="micro-label text-slate-400">Average Health Score</span>
+            <i data-lucide="heart-pulse" class="h-4 w-4 text-ok"></i>
+          </header>
+          <p class="kpi-value"><span id="kpi-health">—</span><small>%</small></p>
+          <footer>
+            <div class="track"><div id="kpi-health-bar" class="track-fill bg-ok" style="width:0%"></div></div>
+            <span id="kpi-health-delta" class="trend">—</span>
+          </footer>
+        </article>
+
+        <article class="kpi-card" data-accent="crit">
+          <header>
+            <span class="micro-label text-slate-400">Active Critical Risks</span>
+            <i data-lucide="triangle-alert" class="h-4 w-4 text-crit"></i>
+          </header>
+          <p class="kpi-value"><span id="kpi-critical">—</span><small>assets</small></p>
+          <footer>
+            <span class="text-xs text-slate-400">Highest: <span id="kpi-critical-worst" class="font-mono text-crit">—</span></span>
+          </footer>
+        </article>
+
+        <article class="kpi-card" data-accent="probe">
+          <header>
+            <span class="micro-label text-slate-400">Total Operating Hours</span>
+            <i data-lucide="timer" class="h-4 w-4 text-probe"></i>
+          </header>
+          <p class="kpi-value"><span id="kpi-hours">—</span><small>hrs</small></p>
+          <footer>
+            <span class="text-xs text-slate-400">Fleet cumulative · <span id="kpi-hours-avg" class="font-mono text-slate-300">—</span> avg/asset</span>
+          </footer>
+        </article>
+
+        <article class="kpi-card" data-accent="warn">
+          <header>
+            <span class="micro-label text-slate-400">Predicted Failures · 7 d</span>
+            <i data-lucide="brain-circuit" class="h-4 w-4 text-warn"></i>
+          </header>
+          <p class="kpi-value"><span id="kpi-predicted">—</span><small>events</small></p>
+          <footer>
+            <span class="text-xs text-slate-400">Model <span class="font-mono text-slate-300">XGB-v4.2</span> · AUC 0.971</span>
+          </footer>
+        </article>
+      </div>
+
+      <!-- Fleet table + alert feed -->
+      <div class="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+
+        <!-- Live fleet table -->
+        <section class="panel overflow-hidden">
+          <header class="panel-head">
+            <div class="flex items-center gap-2">
+              <i data-lucide="server-cog" class="h-4 w-4 text-probe"></i>
+              <h3 class="panel-title">Live Fleet Registry</h3>
+            </div>
+            <div class="flex items-center gap-1.5" role="group" aria-label="Filter by status">
+              <button class="chip is-active" data-filter="all">All</button>
+              <button class="chip" data-filter="Critical">Critical</button>
+              <button class="chip" data-filter="Warning">Warning</button>
+              <button class="chip" data-filter="Healthy">Healthy</button>
+            </div>
+          </header>
+
+          <div class="overflow-x-auto">
+            <table class="w-full min-w-[900px] text-sm">
+              <thead>
+                <tr class="border-b border-hairline text-left">
+                  <th class="th">Machine ID</th>
+                  <th class="th">Asset Name</th>
+                  <th class="th">Op. Type</th>
+                  <th class="th">Status</th>
+                  <th class="th w-48">Health Score</th>
+                  <th class="th">Key Telemetry</th>
+                  <th class="th text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="fleet-tbody" class="divide-y divide-hairline/60"></tbody>
+            </table>
+          </div>
+
+          <footer class="flex flex-wrap items-center justify-between gap-2 border-t border-hairline px-4 py-2.5">
+            <p id="fleet-count" class="font-mono text-xs text-slate-500">—</p>
+            <p class="font-mono text-xs text-slate-500">
+              Source: <span id="fleet-source" class="text-warn">local mock generator</span>
+            </p>
+          </footer>
+        </section>
+
+        <!-- Live alert feed -->
+        <section class="panel flex max-h-[640px] flex-col">
+          <header class="panel-head">
+            <div class="flex items-center gap-2">
+              <span class="dot dot--pulse bg-crit"></span>
+              <h3 class="panel-title">Live Anomaly Feed</h3>
+            </div>
+            <button id="clear-alerts" class="micro-label text-slate-500 transition hover:text-probe">Clear</button>
+          </header>
+          <ul id="alert-feed" class="scroll-thin flex-1 divide-y divide-hairline/50 overflow-y-auto"></ul>
+          <footer class="border-t border-hairline px-4 py-2.5">
+            <p class="font-mono text-[11px] leading-relaxed text-slate-500">
+              Anomalies scored by isolation-forest residuals on the 5-channel sensor stream.
+            </p>
+          </footer>
+        </section>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════════════
+         VIEW 2 — MICRO VIEW (MACHINE DIAGNOSTIC PAGE)
+         ══════════════════════════════════════════════════════════════ -->
+    <section id="view-diagnostic" class="view hidden" data-view="diagnostic">
+
+      <!-- Machine header -->
+      <div class="panel mb-6 flex flex-wrap items-center gap-x-8 gap-y-4 p-4 lg:p-5">
+        <button class="back-link" data-view="fleet">
+          <i data-lucide="arrow-left" class="h-4 w-4"></i> Fleet
+        </button>
+
+        <div class="h-10 w-px bg-hairline"></div>
+
+        <div>
+          <div class="flex flex-wrap items-center gap-2.5">
+            <h2 id="diag-name" class="text-xl font-bold tracking-tight text-white lg:text-2xl">—</h2>
+            <span id="diag-status" class="status-pill status-pill--ok"><span class="dot"></span><span>—</span></span>
+          </div>
+          <p class="mt-1 flex flex-wrap gap-x-4 font-mono text-xs text-slate-500">
+            <span>MODEL <span id="diag-model" class="text-slate-300">—</span></span>
+            <span>S/N <span id="diag-serial" class="text-slate-300">—</span></span>
+            <span>LINE <span id="diag-line" class="text-slate-300">—</span></span>
+            <span>UPTIME <span id="diag-hours" class="text-slate-300">—</span> h</span>
+          </p>
+        </div>
+
+        <!-- Machine switcher -->
+        <div class="ml-auto flex items-center gap-2">
+          <label for="diag-select" class="micro-label text-slate-500">Asset</label>
+          <select id="diag-select"
+            class="rounded-lg border border-hairline bg-steel py-2 pl-3 pr-8 font-mono text-xs text-slate-200 focus:border-probe/60 focus:outline-none"></select>
+          <button id="btn-open-repair" class="btn btn--primary" data-view="repair">
+            <i data-lucide="clipboard-list" class="h-4 w-4"></i> Repair Plan
+          </button>
+        </div>
+      </div>
+
+      <!-- 3-column diagnostic grid -->
+      <div class="grid grid-cols-1 gap-6 xl:grid-cols-[300px_minmax(0,1fr)_360px]">
+
+        <!-- COLUMN 1 · Telemetry sensor cards -->
+        <section class="flex flex-col gap-4">
+          <header class="flex items-center justify-between">
+            <h3 class="panel-title flex items-center gap-2">
+              <i data-lucide="gauge" class="h-4 w-4 text-probe"></i> Live Telemetry
+            </h3>
+            <span class="micro-label text-slate-500">5 ch</span>
+          </header>
+
+          <div id="sensor-grid" class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-1"></div>
+
+          <div class="panel p-4">
+            <p class="micro-label mb-2 text-slate-500">Duty Cycle</p>
+            <div class="flex items-baseline gap-2">
+              <span id="duty-cycle" class="font-mono text-2xl font-bold text-white tabular-nums">—</span>
+              <span class="text-xs text-slate-500">% load</span>
+            </div>
+            <div class="track mt-2.5"><div id="duty-bar" class="track-fill bg-probe" style="width:0%"></div></div>
+            <p class="mt-3 border-t border-hairline pt-3 font-mono text-[11px] leading-relaxed text-slate-500">
+              Vibration RMS <span id="vib-rms" class="text-slate-300">—</span> mm/s ·
+              Acoustic <span id="acoustic" class="text-slate-300">—</span> dB
+            </p>
+          </div>
+        </section>
+
+        <!-- COLUMN 2 · 3D Digital Twin -->
+        <section class="panel flex flex-col overflow-hidden">
+          <header class="panel-head">
+            <div class="flex items-center gap-2">
+              <i data-lucide="box" class="h-4 w-4 text-probe"></i>
+              <h3 class="panel-title">Interactive Digital Twin</h3>
+              <span class="micro-label rounded border border-probe/30 bg-probe/10 px-1.5 py-0.5 text-probe">GLTF</span>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <button id="tw-rotate" class="tw-btn is-active" title="Toggle auto-rotate">
+                <i data-lucide="rotate-3d" class="h-4 w-4"></i>
+              </button>
+              <button id="tw-hotspots" class="tw-btn is-active" title="Toggle component hotspots">
+                <i data-lucide="crosshair" class="h-4 w-4"></i>
+              </button>
+              <button id="tw-reset" class="tw-btn" title="Reset camera">
+                <i data-lucide="scan" class="h-4 w-4"></i>
+              </button>
+              <button id="tw-full" class="tw-btn" title="Fullscreen">
+                <i data-lucide="maximize" class="h-4 w-4"></i>
+              </button>
+            </div>
+          </header>
+
+          <div id="twin-stage" class="twin-stage relative flex-1">
+            <model-viewer
+              id="digital-twin"
+              src="https://modelviewer.dev/shared-assets/models/Astronaut.glb"
+              alt="Interactive 3D digital twin of the selected industrial asset"
+              camera-controls
+              auto-rotate
+              auto-rotate-delay="600"
+              rotation-per-second="14deg"
+              camera-orbit="28deg 78deg 3.2m"
+              min-camera-orbit="auto auto 1.6m"
+              max-camera-orbit="auto auto 8m"
+              field-of-view="32deg"
+              exposure="0.95"
+              shadow-intensity="1.15"
+              shadow-softness="0.85"
+              environment-image="neutral"
+              interaction-prompt="none"
+              class="h-full w-full">
+
+              <!-- Component hotspots · annotated failure candidates -->
+              <button class="hotspot hotspot--crit" slot="hotspot-bearing"
+                      data-position="0 1.12 0.42" data-normal="0 0 1"
+                      data-component="Drive Shaft Bearing" data-part="#BRG-9942">
+                <span class="hotspot-ring"></span>
+                <span class="hotspot-label">
+                  <b>Drive Shaft Bearing</b>
+                  <em>#BRG-9942 · 0.92 risk</em>
+                </span>
+              </button>
+
+              <button class="hotspot hotspot--warn" slot="hotspot-manifold"
+                      data-position="-0.42 0.86 0.16" data-normal="-1 0 0"
+                      data-component="Hydraulic Manifold" data-part="#HYD-2210">
+                <span class="hotspot-ring"></span>
+                <span class="hotspot-label">
+                  <b>Hydraulic Manifold</b>
+                  <em>#HYD-2210 · 0.41 risk</em>
+                </span>
+              </button>
+
+              <button class="hotspot hotspot--ok" slot="hotspot-encoder"
+                      data-position="0.34 1.62 0.22" data-normal="0 0 1"
+                      data-component="Servo Encoder" data-part="#ENC-0771">
+                <span class="hotspot-ring"></span>
+                <span class="hotspot-label">
+                  <b>Servo Encoder</b>
+                  <em>#ENC-0771 · nominal</em>
+                </span>
+              </button>
+
+              <button class="hotspot hotspot--ok" slot="hotspot-coolant"
+                      data-position="0.18 0.22 0.18" data-normal="0 1 0"
+                      data-component="Coolant Return Line" data-part="#CLT-1044">
+                <span class="hotspot-ring"></span>
+                <span class="hotspot-label">
+                  <b>Coolant Return Line</b>
+                  <em>#CLT-1044 · nominal</em>
+                </span>
+              </button>
+
+              <!-- Loading poster -->
+              <div slot="progress-bar" class="twin-progress"><div class="twin-progress-fill"></div></div>
+            </model-viewer>
+
+            <!-- Corner instrument overlays -->
+            <div class="twin-overlay twin-overlay--tl">
+              <p class="micro-label text-probe">Twin Sync</p>
+              <p class="font-mono text-xs text-slate-300">
+                <span id="twin-sync-latency">18</span> ms · <span id="twin-sync-fps">60</span> fps
+              </p>
+            </div>
+
+            <div class="twin-overlay twin-overlay--bl">
+              <p class="micro-label text-slate-400">Flagged Component</p>
+              <p id="twin-focus" class="font-mono text-xs font-bold text-crit">Drive Shaft Bearing</p>
+            </div>
+
+            <div class="twin-legend">
+              <span><i class="dot bg-crit"></i>Critical</span>
+              <span><i class="dot bg-warn"></i>Degrading</span>
+              <span><i class="dot bg-ok"></i>Nominal</span>
+            </div>
+          </div>
+
+          <footer class="flex flex-wrap items-center justify-between gap-2 border-t border-hairline px-4 py-2.5">
+            <p class="font-mono text-[11px] text-slate-500">
+              Drag to orbit · scroll to zoom · click a marker to inspect
+            </p>
+            <p class="font-mono text-[11px] text-slate-500">
+              Mesh <span class="text-slate-300">astronaut.glb</span> · 12.4k tris
+            </p>
+          </footer>
+        </section>
+
+        <!-- COLUMN 3 · AI diagnostic + SHAP -->
+        <section class="flex flex-col gap-4">
+
+          <!-- Failure probability gauge -->
+          <div class="panel p-5">
+            <header class="mb-1 flex items-center justify-between">
+              <h3 class="panel-title flex items-center gap-2">
+                <i data-lucide="brain-circuit" class="h-4 w-4 text-probe"></i> AI Prognosis
+              </h3>
+              <span class="micro-label text-slate-500">XGB-v4.2</span>
+            </header>
+
+            <div class="flex flex-col items-center py-3">
+              <!-- Radial gauge (SVG, stroke-dashoffset driven) -->
+              <div class="relative h-40 w-40">
+                <svg viewBox="0 0 120 120" class="h-full w-full -rotate-90">
+                  <circle cx="60" cy="60" r="52" fill="none" stroke="#1e293b" stroke-width="9" />
+                  <circle id="gauge-arc" cx="60" cy="60" r="52" fill="none"
+                          stroke="currentColor" stroke-width="9" stroke-linecap="round"
+                          stroke-dasharray="326.7" stroke-dashoffset="326.7"
+                          class="text-crit transition-[stroke-dashoffset] duration-700 ease-out" />
+                </svg>
+                <div class="absolute inset-0 grid place-content-center text-center">
+                  <p id="gauge-value" class="font-mono text-4xl font-extrabold leading-none text-white tabular-nums">—<span class="text-xl text-slate-500">%</span></p>
+                  <p class="micro-label mt-1.5 text-slate-500">Failure Prob.</p>
+                </div>
+              </div>
+
+              <p id="risk-band" class="mt-3 font-semibold text-crit">—</p>
+              <p class="mt-1 text-center text-xs text-slate-500">
+                Est. remaining useful life
+                <span id="rul-value" class="font-mono font-bold text-slate-200">—</span>
+              </p>
+            </div>
+
+            <div class="mt-2 border-t border-hairline pt-4">
+              <p class="micro-label mb-2 text-slate-500">Failure Mode Classification</p>
+              <div id="failure-mode" class="mode-badge mode-badge--crit">
+                <i data-lucide="alert-octagon" class="h-4 w-4"></i>
+                <div>
+                  <b id="failure-mode-name">—</b>
+                  <em id="failure-mode-desc">—</em>
+                </div>
+              </div>
+              <dl class="mt-3 grid grid-cols-2 gap-2 font-mono text-[11px]">
+                <div class="stat-mini"><dt>Confidence</dt><dd id="pred-confidence">—</dd></div>
+                <div class="stat-mini"><dt>Anomaly σ</dt><dd id="pred-sigma">—</dd></div>
+              </dl>
+            </div>
+          </div>
+
+          <!-- SHAP explainability -->
+          <div class="panel flex-1 p-5">
+            <header class="mb-4 flex items-start justify-between gap-3">
+              <div>
+                <h3 class="panel-title">SHAP Feature Attribution</h3>
+                <p class="mt-1 text-[11px] leading-relaxed text-slate-500">
+                  Signed contribution of each sensor channel to the current risk score.
+                </p>
+              </div>
+              <i data-lucide="chart-no-axes-column" class="h-4 w-4 shrink-0 text-probe"></i>
+            </header>
+
+            <ul id="shap-list" class="space-y-3.5"></ul>
+
+            <div class="mt-5 rounded-lg border border-hairline bg-void/60 p-3">
+              <p class="micro-label mb-1.5 text-probe">Model Narrative</p>
+              <p id="shap-narrative" class="text-xs leading-relaxed text-slate-400">—</p>
+            </div>
+          </div>
+        </section>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════════════
+         VIEW 3 — MULTIMEDIA REPAIR & ACTION HUB
+         ══════════════════════════════════════════════════════════════ -->
+    <section id="view-repair" class="view hidden" data-view="repair">
+
+      <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
+        <div class="flex items-center gap-5">
+          <button class="back-link" data-view="diagnostic">
+            <i data-lucide="arrow-left" class="h-4 w-4"></i> Diagnostics
+          </button>
+          <div class="h-10 w-px bg-hairline"></div>
+          <div>
+            <p class="micro-label text-probe">Prescriptive Action</p>
+            <h2 class="mt-1 text-2xl font-bold tracking-tight text-white lg:text-3xl">Repair &amp; Action Hub</h2>
+            <p class="mt-1 text-sm text-slate-400">
+              Work order <span class="font-mono text-slate-200">WO-2026-0814</span> ·
+              asset <span id="repair-asset" class="font-mono text-probe">—</span>
+            </p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button class="btn btn--ghost"><i data-lucide="printer" class="h-4 w-4"></i> Print Job Card</button>
+          <button id="btn-signoff" class="btn btn--primary"><i data-lucide="badge-check" class="h-4 w-4"></i> Sign Off Work Order</button>
+        </div>
+      </div>
+
+      <!-- Priority banner -->
+      <div class="mb-6 flex flex-wrap items-center gap-4 rounded-xl border border-crit/35 bg-crit/[0.07] p-4">
+        <span class="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-crit/15 ring-1 ring-crit/40">
+          <i data-lucide="siren" class="h-5 w-5 text-crit"></i>
+        </span>
+        <div class="min-w-56 flex-1">
+          <p class="font-semibold text-white">Priority P1 — schedule intervention within 36 operating hours</p>
+          <p class="mt-0.5 text-sm text-slate-400">
+            Overstrain signature on the drive shaft bearing. Deferring past the window raises
+            secondary spindle damage risk to <span class="font-mono text-crit">64%</span>.
+          </p>
+        </div>
+        <div class="flex gap-6 font-mono text-xs">
+          <div><p class="micro-label text-slate-500">Downtime Est.</p><p class="text-base font-bold text-white">2.5 h</p></div>
+          <div><p class="micro-label text-slate-500">Parts Cost</p><p class="text-base font-bold text-white">₹18,400</p></div>
+          <div><p class="micro-label text-slate-500">Avoided Loss</p><p class="text-base font-bold text-ok">₹4.2 L</p></div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
+
+        <!-- LEFT · schematic + spec sheet -->
+        <div class="flex flex-col gap-6">
+
+          <section class="panel overflow-hidden">
+            <header class="panel-head">
+              <div class="flex items-center gap-2">
+                <i data-lucide="drafting-compass" class="h-4 w-4 text-probe"></i>
+                <h3 class="panel-title">2D Technical Schematic — Bearing Assembly</h3>
+              </div>
+              <span class="micro-label text-slate-500">DWG-4471 · Rev C</span>
+            </header>
+
+            <!-- Hand-drawn SVG schematic: exploded bearing / shaft assembly -->
+            <div class="schematic p-5">
+              <svg viewBox="0 0 620 250" class="h-auto w-full" role="img"
+                   aria-label="Exploded cross-section schematic of the drive shaft bearing assembly">
+                <defs>
+                  <pattern id="hatch" width="6" height="6" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
+                    <line x1="0" y1="0" x2="0" y2="6" stroke="#22d3ee" stroke-opacity=".35" stroke-width="1.4" />
+                  </pattern>
+                  <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                    <path d="M0 0 L10 5 L0 10 z" fill="#64748b" />
+                  </marker>
+                </defs>
+
+                <!-- centre line -->
+                <line x1="20" y1="125" x2="600" y2="125" stroke="#334155" stroke-width="1" stroke-dasharray="14 5 3 5" />
+
+                <!-- shaft -->
+                <rect x="40" y="112" width="330" height="26" rx="3" fill="#0f172a" stroke="#475569" stroke-width="1.5" />
+                <rect x="40" y="112" width="330" height="26" rx="3" fill="url(#hatch)" opacity=".25" />
+
+                <!-- housing -->
+                <rect x="360" y="62" width="120" height="126" rx="6" fill="#0b1220" stroke="#64748b" stroke-width="1.5" />
+                <!-- outer race -->
+                <circle cx="420" cy="125" r="48" fill="none" stroke="#94a3b8" stroke-width="2" />
+                <!-- inner race (the failing part) -->
+                <circle cx="420" cy="125" r="30" fill="none" stroke="#e11d48" stroke-width="2.5" class="schem-flag" />
+                <!-- ball bearings -->
+                <g fill="#cbd5e1">
+                  <circle cx="420" cy="86" r="7" /><circle cx="420" cy="164" r="7" />
+                  <circle cx="459" cy="125" r="7" /><circle cx="381" cy="125" r="7" />
+                  <circle cx="448" cy="97" r="7" /><circle cx="392" cy="153" r="7" />
+                  <circle cx="448" cy="153" r="7" /><circle cx="392" cy="97" r="7" />
+                </g>
+                <circle cx="420" cy="125" r="14" fill="#0f172a" stroke="#475569" stroke-width="1.5" />
+
+                <!-- seal cap -->
+                <rect x="492" y="96" width="30" height="58" rx="4" fill="#0f172a" stroke="#64748b" stroke-width="1.5" />
+                <rect x="534" y="108" width="52" height="34" rx="17" fill="none" stroke="#475569" stroke-width="1.5" stroke-dasharray="4 3" />
+
+                <!-- callouts -->
+                <g stroke="#64748b" stroke-width="1" marker-end="url(#arrow)" fill="none">
+                  <path d="M170 60 L170 108" /><path d="M420 30 L420 90" />
+                  <path d="M556 172 L556 146" /><path d="M300 200 L392 156" />
+                </g>
+                <g font-family="JetBrains Mono, monospace" font-size="10.5" fill="#94a3b8">
+                  <text x="170" y="52" text-anchor="middle">① DRIVE SHAFT Ø40</text>
+                  <text x="420" y="22" text-anchor="middle" fill="#fb7185">② INNER RACE — WORN (#BRG-9942)</text>
+                  <text x="556" y="188" text-anchor="middle">③ LABYRINTH SEAL</text>
+                  <text x="300" y="216" text-anchor="middle">④ 8× Ø9 BALL COMPLEMENT</text>
+                </g>
+                <g font-family="JetBrains Mono, monospace" font-size="9.5" fill="#475569">
+                  <text x="40" y="238">SCALE 1:2</text>
+                  <text x="200" y="238">PROJECTION: FIRST ANGLE</text>
+                  <text x="430" y="238">TOL ±0.02 mm</text>
+                </g>
+              </svg>
+            </div>
+          </section>
+
+          <!-- Component spec sheet -->
+          <section class="panel overflow-hidden">
+            <header class="panel-head">
+              <div class="flex items-center gap-2">
+                <i data-lucide="table-properties" class="h-4 w-4 text-probe"></i>
+                <h3 class="panel-title">Component Specification &amp; Safe Thresholds</h3>
+              </div>
+              <button class="micro-label text-slate-500 transition hover:text-probe">Export CSV</button>
+            </header>
+
+            <div class="overflow-x-auto">
+              <table class="w-full min-w-[560px] text-sm">
+                <thead>
+                  <tr class="border-b border-hairline text-left">
+                    <th class="th">Parameter</th>
+                    <th class="th">Specification</th>
+                    <th class="th">Measured</th>
+                    <th class="th text-right">Status</th>
+                  </tr>
+                </thead>
+                <tbody id="spec-tbody" class="divide-y divide-hairline/60"></tbody>
+              </table>
+            </div>
+
+            <footer class="grid gap-3 border-t border-hairline bg-void/40 px-4 py-3 sm:grid-cols-3">
+              <div><p class="micro-label text-slate-500">Part Serial</p><p class="font-mono text-sm font-bold text-probe">#BRG-9942</p></div>
+              <div><p class="micro-label text-slate-500">OEM / Warehouse</p><p class="font-mono text-sm text-slate-200">SKF · Rack B-14-03</p></div>
+              <div><p class="micro-label text-slate-500">Stock On Hand</p><p class="font-mono text-sm text-ok">4 units</p></div>
+            </footer>
+          </section>
+        </div>
+
+        <!-- RIGHT · checklist + video -->
+        <div class="flex flex-col gap-6">
+
+          <!-- Prescriptive checklist -->
+          <section class="panel overflow-hidden">
+            <header class="panel-head">
+              <div class="flex items-center gap-2">
+                <i data-lucide="list-checks" class="h-4 w-4 text-probe"></i>
+                <h3 class="panel-title">Prescriptive Maintenance Checklist</h3>
+              </div>
+              <span id="checklist-progress" class="font-mono text-xs text-slate-400">0 / 0</span>
+            </header>
+
+            <div class="border-b border-hairline px-4 py-3">
+              <div class="track"><div id="checklist-bar" class="track-fill bg-ok" style="width:0%"></div></div>
+            </div>
+
+            <ol id="checklist" class="divide-y divide-hairline/60"></ol>
+
+            <footer class="flex items-center gap-2.5 border-t border-hairline bg-warn/[0.06] px-4 py-3">
+              <i data-lucide="shield-alert" class="h-4 w-4 shrink-0 text-warn"></i>
+              <p class="text-[11px] leading-relaxed text-slate-400">
+                LOTO required. Steps 1 and 2 are safety-gated — later steps unlock only after both are confirmed.
+              </p>
+            </footer>
+          </section>
+
+          <!-- Animated repair video -->
+          <section class="panel overflow-hidden">
+            <header class="panel-head">
+              <div class="flex items-center gap-2">
+                <i data-lucide="circle-play" class="h-4 w-4 text-probe"></i>
+                <h3 class="panel-title">3D Animated Repair Procedure</h3>
+              </div>
+              <span class="micro-label text-slate-500">04:12 · EN / HI</span>
+            </header>
+
+            <!-- Responsive 16:9 embed -->
+            <div class="video-frame">
+              <iframe
+                src="https://www.youtube.com/embed/gLmTGZgUlbc?rel=0&modestbranding=1"
+                title="Animated bearing replacement procedure"
+                loading="lazy"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowfullscreen
+                referrerpolicy="strict-origin-when-cross-origin"></iframe>
+            </div>
+
+            <div class="grid gap-2 p-4 sm:grid-cols-3">
+              <button class="media-chip"><i data-lucide="file-text" class="h-3.5 w-3.5"></i> OEM Manual PDF</button>
+              <button class="media-chip"><i data-lucide="scan-eye" class="h-3.5 w-3.5"></i> AR Overlay</button>
+              <button class="media-chip"><i data-lucide="headset" class="h-3.5 w-3.5"></i> Call Expert</button>
+            </div>
+          </section>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="border-t border-hairline px-4 py-5 lg:px-7">
+    <div class="mx-auto flex max-w-[1800px] flex-wrap items-center justify-between gap-3 font-mono text-[11px] text-slate-600">
+      <p>SENTINEL PdM · frontend prototype · Flask API expected at <span class="text-slate-400">http://127.0.0.1:5000/api/v1/</span></p>
+      <p>Build 2026.08.26 · <span class="text-slate-400">mock telemetry active</span></p>
+    </div>
+  </footer>
+
+  <!-- Toast host -->
+  <div id="toast-host" class="pointer-events-none fixed bottom-5 right-5 z-50 flex w-80 flex-col gap-2"></div>
+
+  <script src="app.js" defer></script>
+</body>
+</html>
