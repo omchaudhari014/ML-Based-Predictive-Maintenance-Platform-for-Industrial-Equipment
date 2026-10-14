@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>3D Diagnostic — Sentinel PdM</title>
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/layout.css">
+<link rel="stylesheet" href="css/components.css">
+<link rel="stylesheet" href="css/responsive.css">
+<script type="importmap">
+{ "imports": { "three": "./assets/vendor/three/three.module.min.js", "three/addons/": "./assets/vendor/three/addons/" } }
+</script>
+<style>
+  .mach-grid { display: grid; grid-template-columns: 2fr 1fr; gap: var(--s-4); height: 70vh; }
+  @media (max-width: 900px) { .mach-grid { grid-template-columns: 1fr; height: auto; } }
+  .viewer-wrap { background: var(--surface-2); border-radius: var(--radius-md); overflow: hidden; position: relative; min-height: 400px; }
+  .side-panel { display: flex; flex-direction: column; gap: var(--s-4); overflow-y: auto; }
+</style>
+</head>
+<body data-page="machine">
+  <header id="site-topbar"></header>
+  <main class="main" id="main">
+    <div id="content">Loading...</div>
+  </main>
+  <footer id="site-footer"></footer>
+<script type="module">
+import './js/app.js';
+import { getMachineById, getRecord, getMachineProfile, getExplanation, getMachines } from './js/api.js';
+import { el, mount, clear, params } from './js/util/dom.js';
+import { getLastPrediction } from './js/store.js';
+
+async function init() {
+  const container = document.getElementById('content');
+  let id = params().id;
+  let recordId = params().recordId;
+  let compId = params().component;
+  
+  if (!id && !recordId) {
+    container.textContent = 'No ID provided.';
+    return;
+  }
+  
+  try {
+    let machine;
+    let prediction = null;
+    let shapFactors = null;
+    
+    // Auto-detect if 'id' is a CSV recordId from a stale URL
+    if (id && !recordId) {
+        // If it's a number, it's definitely a CSV record ID (UDIs are numeric in this dataset)
+        if (!isNaN(id) || String(id).startsWith('UDI') || String(id).startsWith('M-')) {
+            recordId = id;
+            id = null;
+        } else {
+            try {
+                const testRec = getRecord(id);
+                if (testRec && testRec.features) {
+                    recordId = id;
+                    id = null;
+                }
+            } catch(e) {}
+        }
+    }
+    
+    if (recordId) {
+      const rec = getRecord(recordId);
+      if (!rec) {
+          container.innerHTML = `<div style="max-width: 600px; margin: 40px auto; text-align: center; background: var(--surface-2); padding: 40px; border-radius: 8px;">
+            <h2 style="color: var(--risk-critical); margin-bottom: 20px;">Session Expired</h2>
+            <p style="margin-bottom: 20px; line-height: 1.5;">We could not find the data for record <b>${recordId}</b>. Your CSV analysis session has likely expired or you refreshed a temporary page.</p>
+            <a href="upload.html" class="btn btn--primary">Upload CSV Again</a>
+          </div>`;
+          return;
+      }
+      prediction = rec;
+      
+      const fname = (rec.features.Machine_Family || '').toLowerCase();
+      
+      const allMachines = await getMachines();
+      machine = allMachines.find(m => {
+         return m.name.toLowerCase().includes(fname) || fname.includes(m.type_label.toLowerCase());
+      }) || allMachines.find(m => m.id === 'cnc-001') || allMachines[0];
+      
+      try {
+          const explainedRec = await getExplanation(recordId);
+          shapFactors = explainedRec.explanation || explainedRec.factors || [];
+      } catch (explErr) {
+          console.warn("Explanation failed", explErr);
+          shapFactors = [];
+      }
+      
+      if (!compId && shapFactors && shapFactors.length > 0) {
+        compId = shapFactors[0].area;
+      }
+      
+      prediction.predicted_failure_mode = rec.failure_type || 'Anomaly';
+      prediction.causes = ['Detected by ML model based on operational data pattern.'];
+      prediction.consequences = ['Potential secondary damage to related assemblies.'];
+      prediction.recommendations = [{ priority: 'high', action: 'Inspect ' + (shapFactors && shapFactors.length ? (shapFactors[0].area_label || shapFactors[0].area) : 'equipment') }];
+      
+    } else {
+      machine = await getMachineById(id);
+      const last = getLastPrediction();
+      if (last && last.machine_id === id) {
+        prediction = last;
+      }
+    }
+    
+    render(container, machine, prediction, compId, false, shapFactors);
+  } catch(err) {
+    console.error(err);
+    if (err.message === 'Machine not found') {
+        container.innerHTML = `<div style="max-width: 600px; margin: 40px auto; text-align: center; background: var(--surface-2); padding: 40px; border-radius: 8px;">
+            <h2 style="color: var(--risk-critical); margin-bottom: 20px;">Machine Not Found</h2>
+            <p style="margin-bottom: 20px; line-height: 1.5;">The machine profile or record you requested does not exist. If you were viewing a CSV record, your session may have expired.</p>
+            <a href="index.html" class="btn btn--secondary" style="margin-right: 10px;">Go to Catalog</a>
+            <a href="upload.html" class="btn btn--primary">Upload CSV Again</a>
+          </div>`;
+    } else {
+        container.textContent = err.message || 'Failed to load diagnostics.';
+    }
+  }
+}
+
+function render(container, machine, pred, compId, isOldMode, shapFactors) {
+  clear(container);
+  
+  const header = el('div', { class: 'page-header' }, [
+    el('div', { class: 'page-header__text' }, [
+      el('h1', { class: 'page-header__title' }, machine.name),
+      el('span', { class: 'badge', style: 'margin-top: var(--s-2); display: inline-block;' }, machine.type_label)
+    ]),
+    el('div', { class: 'cluster' }, [
+      isOldMode ? null : el('a', { class: 'btn btn--secondary btn--sm', href: `profile.html?id=${machine.id}` }, 'View Profile'),
+      isOldMode ? null : el('a', { class: 'btn btn--primary btn--sm', href: `predict.html?id=${machine.id}` }, 'Run Prediction')
+    ].filter(Boolean))
+  ]);
+  
+  const viewerWrap = el('div', { class: 'viewer-wrap', id: 'viewer-3d' });
+  const sidePanel = el('div', { class: 'side-panel' });
+  
+  if (pred) {
+    const causesHtml = (pred.causes && pred.causes.length) ? 
+      el('div', { style: 'margin-top: var(--s-3);' }, [ el('h4', {}, 'Causes'), el('ul', { style: 'padding-left: var(--s-4); margin-top: 4px;' }, pred.causes.map(c => el('li', {}, c))) ]) : null;
+      
+    const risksHtml = (pred.consequences && pred.consequences.length) ? 
+      el('div', { style: 'margin-top: var(--s-3);' }, [ el('h4', {}, 'Risks / Consequences'), el('ul', { style: 'padding-left: var(--s-4); margin-top: 4px;' }, pred.consequences.map(c => el('li', {}, c))) ]) : null;
+      
+    const diagCard = el('div', { class: 'card', style: 'border-left: 4px solid var(--risk-critical);' }, [
+      el('h3', {}, 'Diagnostic Summary'),
+      el('div', { style: 'margin: var(--s-2) 0; font-size: 1.1em;' }, [
+        el('span', { style: 'font-weight: bold;' }, 'Detected Issue: '),
+        el('span', { style: 'color: var(--risk-critical); font-weight: bold;' }, pred.predicted_failure_mode || 'Anomaly Detected')
+      ]),
+      causesHtml,
+      risksHtml,
+      
+      (shapFactors && shapFactors.length > 0) ? el('div', { style: 'margin-top: var(--s-4);' }, [
+        el('h4', {}, 'ML Feature Contributions (SHAP)'),
+        el('div', { style: 'margin-top: var(--s-2); background: var(--surface-2); padding: var(--s-2); border-radius: var(--r-sm);' }, 
+          shapFactors.map(f => el('div', { style: 'display: flex; justify-content: space-between; margin-bottom: 4px; border-bottom: 1px solid var(--surface-3); padding-bottom: 4px;' }, [
+            el('span', {}, f.feature),
+            el('span', { style: `color: ${f.direction === 'raises' ? 'var(--risk-critical)' : 'var(--risk-low)'}; font-weight: bold;` }, `${f.direction === 'raises' ? '+' : ''}${f.contribution.toFixed(3)}`)
+          ]))
+        )
+      ]) : null,
+
+      el('div', { style: 'margin-top: var(--s-3); padding: var(--s-3); background: var(--surface-2); border-radius: var(--r-sm);' }, [
+        el('h4', {}, 'Advices & Recommendations'),
+        el('ul', { style: 'padding-left: var(--s-4); margin-top: var(--s-2);' }, 
+          (pred.recommendations||[]).map(r => el('li', { style: 'margin-bottom: var(--s-1)' }, `[${r.priority ? r.priority.toUpperCase() : 'ACTION'}] ${r.action}`))
+        )
+      ])
+    ]);
+    mount(sidePanel, diagCard);
+  }
+  
+  const descCard = el('div', { class: 'card', style: 'margin-top: var(--s-4);' }, [
+    el('h3', {}, 'Machine Overview'),
+    el('p', { style: 'margin-top: var(--s-2); line-height: 1.5; color: var(--text-secondary);' }, machine.description || 'No description available for this model.')
+  ]);
+  mount(sidePanel, descCard);
+
+  const compCard = el('div', { class: 'card', id: 'comp-card', style: 'display: none;' });
+  mount(sidePanel, compCard);
+  
+  const grid = el('div', { class: 'mach-grid section' }, [viewerWrap, sidePanel]);
+  
+  mount(container, header);
+  mount(container, grid);
+  
+  import('./js/3d-viewer.js').then(m => {
+    m.initViewer('viewer-3d', {
+      modelUrl: machine.model3d,
+      highlightComponent: compId || null,
+      onComponentClick: (compKey) => {
+        if (!compKey) {
+          compCard.style.display = 'none';
+          return;
+        }
+        const id = typeof compKey === 'string' ? compKey : compKey.id;
+        const c = (machine.components || []).find(x => x.id === id) || { id, name: id, description: 'No description available' };
+        
+        compCard.style.display = 'block';
+        clear(compCard);
+        mount(compCard, el('h3', {}, c.name || 'Component Info'));
+        mount(compCard, el('p', { style: 'margin-top: var(--s-2)' }, c.description || ''));
+      }
+    });
+  });
+}
+
+init();
+</script>
+</body>
+</html>

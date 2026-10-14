@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Predict Condition — Sentinel PdM</title>
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/layout.css">
+<link rel="stylesheet" href="css/components.css">
+<link rel="stylesheet" href="css/responsive.css">
+<style>
+  .sensor-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: var(--s-4); }
+  .sensor-input-wrap { display: flex; flex-direction: column; gap: var(--s-1); }
+  .res-grid { display: grid; grid-template-columns: 1fr 2fr; gap: var(--s-6); }
+  @media (max-width: 800px) { .res-grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body data-page="predict">
+  <header id="site-topbar"></header>
+  <main class="main" id="main">
+    <div id="content">Loading...</div>
+  </main>
+  <footer id="site-footer"></footer>
+<script type="module">
+import './js/app.js';
+import { getMachineById, predictCondition } from './js/api.js';
+import { el, mount, clear, params } from './js/util/dom.js';
+import { setCurrentMachine, setLastPrediction, savePredictionHistory } from './js/store.js';
+import { riskArcMeter, riskPill } from './js/charts.js';
+
+let machine = null;
+
+async function init() {
+  const container = document.getElementById('content');
+  const id = params().id;
+  if (!id) {
+    container.textContent = 'No machine ID provided.';
+    return;
+  }
+  try {
+    machine = await getMachineById(id);
+    setCurrentMachine(machine);
+    renderForm(container);
+  } catch(e) {
+    container.textContent = 'Error loading machine.';
+  }
+}
+
+function renderForm(container) {
+  clear(container);
+  
+  const header = el('div', { class: 'page-header' }, [
+    el('div', { class: 'page-header__text' }, [
+      el('h1', { class: 'page-header__title' }, `Predict Condition: ${machine.name}`)
+    ]),
+    el('a', { class: 'btn btn--secondary btn--sm', href: `profile.html?id=${machine.id}` }, 'View Profile')
+  ]);
+  
+  const form = el('form', { class: 'card section' });
+  const grid = el('div', { class: 'sensor-grid', style: 'margin-bottom: var(--s-5);' });
+  
+  const inputs = {};
+  
+  (machine.sensor_schema||[]).forEach(s => {
+    const input = el('input', { 
+      type: 'number', 
+      step: 'any', 
+      required: true, 
+      class: 'input', 
+      placeholder: `Normal: ${s.normal_min} - ${s.normal_max}`
+    });
+    inputs[s.id] = input;
+    
+    const wrap = el('div', { class: 'sensor-input-wrap' }, [
+      el('label', { style: 'font-weight: 500; font-size: var(--text-sm);' }, `${s.name} (${s.unit})`),
+      input
+    ]);
+    mount(grid, wrap);
+  });
+  
+  const btnGroup = el('div', { class: 'cluster' }, [
+    el('button', { type: 'button', class: 'btn btn--secondary', onclick: () => {
+      (machine.sensor_schema||[]).forEach(s => {
+        inputs[s.id].value = ((s.normal_min + s.normal_max) / 2).toFixed(2);
+      });
+    }}, 'Use Normal Values'),
+    el('button', { type: 'reset', class: 'btn btn--outline' }, 'Reset'),
+    el('button', { type: 'submit', class: 'btn btn--primary' }, 'Predict Condition')
+  ]);
+  
+  form.onsubmit = async (e) => {
+    e.preventDefault();
+    const vals = {};
+    for (const [k, v] of Object.entries(inputs)) {
+      vals[k] = parseFloat(v.value);
+    }
+    const btn = btnGroup.querySelector('button[type="submit"]');
+    btn.disabled = true;
+    btn.textContent = 'Predicting...';
+    try {
+      const res = await predictCondition(machine.id, vals);
+      setLastPrediction(res);
+      savePredictionHistory({
+        analysisId: `manual-${Date.now()}`,
+        type: 'manual_prediction',
+        createdAt: new Date().toISOString(),
+        machineId: machine.id,
+        machineName: machine.name,
+        machineType: machine.type,
+        riskScore: res.risk_score,
+        riskLevel: res.risk_level,
+        assessmentMethod: res.assessment_method,
+        predictedComponent: res.predicted_component?.name,
+        predictedFailureMode: res.predicted_failure_mode,
+        values: vals
+      });
+      renderResults(container, res);
+    } catch(err) {
+      alert(err.message);
+      btn.disabled = false;
+      btn.textContent = 'Predict Condition';
+    }
+  };
+  
+  mount(form, grid);
+  mount(form, btnGroup);
+  
+  mount(container, header);
+  mount(container, form);
+}
+
+function renderResults(container, res) {
+  clear(container);
+  
+  const header = el('div', { class: 'page-header' }, [
+    el('div', { class: 'page-header__text' }, [
+      el('h1', { class: 'page-header__title' }, `Prediction Results: ${machine.name}`),
+      el('div', { class: 'cluster', style: 'margin-top: var(--s-2)' }, [
+        riskPill(res.risk_level),
+        el('span', { class: 'badge' }, res.assessment_method)
+      ])
+    ]),
+    el('div', { class: 'cluster' }, [
+      el('button', { class: 'btn btn--secondary btn--sm', onclick: () => renderForm(container) }, 'New Prediction'),
+      el('a', { class: 'btn btn--primary btn--sm', href: `machine.html?id=${machine.id}${res.predicted_component ? `&component=${res.predicted_component.id}` : ''}` }, 'View 3D Diagnostic')
+    ])
+  ]);
+  
+  const meterCard = el('div', { class: 'card', style: 'text-align: center;' }, [
+    el('h3', {}, 'Risk Score'),
+    riskArcMeter(res.risk_score)
+  ]);
+  
+  const diagCard = el('div', { class: 'card' }, [
+    el('h3', {}, 'Diagnosis'),
+    el('p', { style: 'margin: var(--s-2) 0; font-size: var(--text-lg); font-weight: bold; color: var(--risk-critical);' }, res.predicted_failure_mode || 'Normal Operation'),
+    res.predicted_component ? el('p', {}, `Affected Component: ${res.predicted_component.name}`) : null,
+    el('div', { style: 'margin-top: var(--s-4);' }, [
+      el('h4', {}, 'Recommendations'),
+      el('ul', { style: 'padding-left: var(--s-4); margin-top: var(--s-2);' }, 
+        (res.recommendations||[]).map(r => el('li', { style: 'margin-bottom: var(--s-1)' }, `[${r.priority.toUpperCase()}] ${r.action}`))
+      )
+    ])
+  ]);
+  
+  const factorsTable = el('table', { class: 'table' }, [
+    el('thead', {}, [el('tr', {}, [el('th', {}, 'Sensor'), el('th', {}, 'Value'), el('th', {}, 'Normal'), el('th', {}, 'Status')])]),
+    el('tbody', {}, (res.sensor_analysis||[]).map(s => el('tr', {}, [
+      el('td', {}, s.label || s.sensor),
+      el('td', {}, `${s.value} ${s.unit}`),
+      el('td', {}, `${s.normal_min} - ${s.normal_max}`),
+      el('td', {}, el('span', { class: 'badge', style: s.status === 'critical' ? 'background: var(--risk-critical); color: #fff;' : s.status === 'warning' ? 'background: var(--risk-high); color: #fff;' : '' }, s.status))
+    ])))
+  ]);
+  
+  const detailCard = el('div', { class: 'card section' }, [
+    el('h3', {}, 'Sensor Analysis'),
+    el('div', { class: 'table-wrap', style: 'margin-top: var(--s-3);' }, [factorsTable])
+  ]);
+  
+  const grid = el('div', { class: 'res-grid section' }, [
+    el('div', { style: 'display: flex; flex-direction: column; gap: var(--s-4);' }, [meterCard, diagCard]),
+    detailCard
+  ]);
+  
+  mount(container, header);
+  mount(container, grid);
+}
+
+init();
+</script>
+</body>
+</html>

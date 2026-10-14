@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Analysis History — Sentinel PdM</title>
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/layout.css">
+<link rel="stylesheet" href="css/components.css">
+<link rel="stylesheet" href="css/responsive.css">
+</head>
+<body data-page="history">
+<a class="skip-link" href="#main">Skip to content</a>
+<header id="site-topbar"></header>
+<main class="main" id="main">
+  <div class="page-header">
+    <div class="page-header__text">
+      <h1 class="page-header__title">Analysis History</h1>
+    </div>
+    <div class="cluster" id="history-status">
+      <span class="badge badge--outline">Local Session History</span>
+    </div>
+  </div>
+
+  <div id="content-container"></div>
+</main>
+<footer id="site-footer"></footer>
+<script type="module">
+import './js/app.js';
+import { getHistory } from './js/api.js';
+import * as store from './js/store.js';
+import { initFirebase, isConnected, getHistoricalAnalysis } from './js/firebase-module.js';
+import { el, mount, clear, $ } from './js/util/dom.js';
+import { dateTime, int } from './js/util/format.js';
+
+const container = document.getElementById('content-container');
+const statusBadge = document.getElementById('history-status');
+
+async function render() {
+  await initFirebase();
+  
+  clear(statusBadge);
+  if (isConnected()) {
+    mount(statusBadge, el('span', { class: 'badge', style: 'background: var(--risk-low); color: #fff;' }, 'Cloud History Connected'));
+  } else {
+    mount(statusBadge, el('span', { class: 'badge badge--outline' }, 'Local Session History'));
+  }
+
+  clear(container);
+  const hist = getHistory();
+
+  if (!hist || hist.length === 0) {
+    mount(container, el('div', { class: 'empty' }, [
+      el('div', { class: 'empty__title' }, 'No analyses yet'),
+      el('a', { class: 'btn btn--primary empty__action', href: 'upload.html' }, 'Upload Dataset')
+    ]));
+    return;
+  }
+
+  const thead = el('thead', {}, [
+    el('tr', {}, [
+      el('th', {}, 'Date'),
+      el('th', {}, 'Type'),
+      el('th', {}, 'Subject'),
+      el('th', {}, 'Details'),
+      el('th', {}, 'Model/Method'),
+      el('th', {}, 'Action')
+    ])
+  ]);
+
+  const tbody = el('tbody', {}, hist.map(h => {
+    const isManual = h.type === 'manual_prediction';
+    return el('tr', {}, [
+      el('td', {}, dateTime(h.createdAt)),
+      el('td', {}, isManual ? 'Manual Prediction' : 'Batch Analysis'),
+      el('td', {}, isManual ? h.machineName : h.datasetName),
+      el('td', {}, isManual ? 
+        el('span', { class: `badge`, style: h.riskLevel === 'critical' ? 'background: var(--risk-critical); color: #fff;' : h.riskLevel === 'high' ? 'background: var(--risk-high); color: #fff;' : '' }, h.predictedFailureMode) 
+        : `Records: ${int(h.records)}, High/Crit: ${int(h.predictedFailures || 0)}`),
+      el('td', {}, isManual ? h.assessmentMethod : (h.model || '—')),
+      el('td', {}, [
+        el('button', { 
+          class: 'btn btn--sm btn--secondary', 
+          onclick: async (e) => {
+            if (isManual) {
+              window.location.href = `predict.html?id=${encodeURIComponent(h.machineId)}`;
+              return;
+            }
+            const btn = e.target;
+            btn.textContent = 'Loading...';
+            btn.disabled = true;
+            const fullAnalysis = await getHistoricalAnalysis(h.analysisId);
+            if (fullAnalysis) {
+              store.setAnalysis(fullAnalysis);
+              window.location.href = 'results.html';
+            } else {
+              alert("Could not restore this analysis (data may have been cleared or cloud unavailable).");
+              btn.textContent = 'View';
+              btn.disabled = false;
+            }
+          }
+        }, 'View')
+      ])
+    ]);
+  }));
+
+  mount(container, el('div', { class: 'card' }, [
+    el('div', { class: 'table-wrap' }, [
+      el('table', { class: 'table' }, [thead, tbody])
+    ])
+  ]));
+
+  const btnClear = el('button', { class: 'btn btn--danger btn--sm', style: 'margin-top: var(--s-4);' }, 'Clear Local History');
+  btnClear.addEventListener('click', () => {
+    if (confirm('Are you sure you want to clear your local history?')) {
+      store.clearHistory();
+      render();
+    }
+  });
+  mount(container, btnClear);
+}
+
+render();
+</script>
+</body>
+</html>

@@ -1,0 +1,1044 @@
+/* ==========================================================================
+   components.css — every component in the hierarchy, built once
+   ========================================================================== */
+
+/* ==========================================================================
+   PRIMITIVES
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   Button
+   -------------------------------------------------------------------------- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-2);
+  min-height: 36px;
+  padding: 0 var(--s-4);
+  border: 1px solid transparent;
+  border-radius: var(--r-md);
+  background: transparent;
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  text-decoration: none;
+  transition: background var(--dur-fast) var(--ease),
+              border-color var(--dur-fast) var(--ease);
+}
+
+.btn--primary {
+  background: var(--accent-solid);
+  border-color: var(--accent-solid);
+  color: #ffffff;
+}
+.btn--primary:hover  { background: var(--accent-hover); border-color: var(--accent-hover); }
+.btn--primary:active { background: var(--accent-active); border-color: var(--accent-active); }
+
+.btn--secondary {
+  background: var(--surface);
+  border-color: var(--baseline);
+  color: var(--ink);
+}
+.btn--secondary:hover { background: var(--surface-hover); border-color: var(--ink-hint); }
+
+.btn--ghost { color: var(--ink-2); }
+.btn--ghost:hover { background: var(--surface-hover); color: var(--ink); }
+
+.btn--danger {
+  background: var(--surface);
+  border-color: var(--risk-critical);
+  color: var(--risk-critical-ink);
+}
+.btn--danger:hover { background: var(--risk-critical-tint); }
+
+.btn--lg { min-height: 42px; padding: 0 var(--s-6); font-size: var(--fs-body); }
+.btn--sm { min-height: 28px; padding: 0 var(--s-3); font-size: var(--fs-xs); }
+
+.btn[disabled],
+.btn[aria-disabled="true"] {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* --------------------------------------------------------------------------
+   Card — hairline ring, at most one shadow, never stacked
+   -------------------------------------------------------------------------- */
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--ring);
+  border-radius: var(--r-md);
+  padding: 20px;
+}
+
+.card--flush { padding: 0; overflow: hidden; }
+.card--raised { box-shadow: var(--shadow); }
+.card--sunken { background: var(--surface-sunken); border-color: var(--hairline); }
+
+.card__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s-2);
+  margin-bottom: var(--s-3);
+}
+
+.card__title { font-size: var(--fs-body); font-weight: 600; }
+.card__body  { min-width: 0; }
+
+.card__foot {
+  margin-top: var(--s-4);
+  padding-top: var(--s-3);
+  border-top: 1px solid var(--hairline);
+}
+
+/* When the card is a labelled panel, the eyebrow replaces the title */
+.card__eyebrow {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-hint);
+  margin-bottom: var(--s-2);
+}
+
+/* --------------------------------------------------------------------------
+   Table
+   -------------------------------------------------------------------------- */
+
+.table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--ring);
+  border-radius: var(--r-md);
+  background: var(--surface);
+}
+.table-wrap .table { border-radius: 0; }
+
+.table {
+  font-size: var(--fs-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.table caption {
+  text-align: left;
+  padding: var(--s-3) var(--s-4);
+  font-size: var(--fs-xs);
+  color: var(--ink-hint);
+}
+
+.table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--surface-sunken);
+  text-align: left;
+  font-weight: 600;
+  font-size: var(--fs-xs);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  padding: var(--s-2) var(--s-3);
+  border-bottom: 1px solid var(--baseline);
+  white-space: nowrap;
+}
+
+.table tbody td {
+  padding: var(--s-3);
+  border-bottom: 1px solid var(--hairline);
+  vertical-align: middle;
+}
+.table tbody tr:last-child td { border-bottom: 0; }
+.table tbody tr:hover { background: var(--surface-hover); }
+
+.table td.num,
+.table th.num { text-align: right; }
+
+/* de-emphasised column (Accuracy on the model table — §11) */
+.table .col-deemph,
+.table th.col-deemph { color: var(--ink-hint); }
+
+/* the selected model row */
+.table tbody tr.is-selected {
+  background: var(--accent-tint);
+}
+.table tbody tr.is-selected:hover { background: var(--accent-tint); }
+
+/* sortable header button */
+.th-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-1);
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+.th-sort:hover { color: var(--ink); }
+.th-sort__arrow { opacity: 0; font-size: 9px; }
+[aria-sort="ascending"]  .th-sort__arrow,
+[aria-sort="descending"] .th-sort__arrow { opacity: 1; }
+[aria-sort="descending"] .th-sort__arrow { transform: rotate(180deg); }
+
+/* --------------------------------------------------------------------------
+   Field
+   -------------------------------------------------------------------------- */
+
+.field { display: flex; flex-direction: column; gap: var(--s-1); }
+
+.field__label {
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.field__control,
+.input,
+.select {
+  width: 100%;
+  min-height: 36px;
+  padding: 0 var(--s-3);
+  background: var(--surface);
+  border: 1px solid var(--baseline);
+  border-radius: var(--r-md);
+  font-size: var(--fs-sm);
+}
+.input:hover, .select:hover { border-color: var(--ink-hint); }
+.input::placeholder { color: var(--ink-hint); }
+
+.select {
+  appearance: none;
+  padding-right: var(--s-8);
+  background-image: linear-gradient(45deg, transparent 50%, var(--ink-2) 50%),
+                    linear-gradient(135deg, var(--ink-2) 50%, transparent 50%);
+  background-position: calc(100% - 16px) 50%, calc(100% - 11px) 50%;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+}
+
+.field__hint  { font-size: var(--fs-xs); color: var(--ink-hint); }
+.field__error { font-size: var(--fs-xs); color: var(--risk-critical-ink); font-weight: 500; }
+
+.field.is-invalid .input,
+.field.is-invalid .select { border-color: var(--risk-critical); }
+
+/* checkbox row */
+.check {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-2);
+  font-size: var(--fs-sm);
+}
+.check input[type="checkbox"] {
+  flex: 0 0 auto;
+  width: 16px; height: 16px;
+  margin: 3px 0 0;
+  accent-color: var(--accent);
+}
+.check.is-locked { opacity: 0.55; }
+
+/* search box with a leading icon slot */
+.search { position: relative; }
+.search .input { padding-left: 32px; }
+.search__icon {
+  position: absolute;
+  left: 10px; top: 50%;
+  transform: translateY(-50%);
+  color: var(--ink-hint);
+  pointer-events: none;
+}
+
+/* --------------------------------------------------------------------------
+   Tabs
+   -------------------------------------------------------------------------- */
+
+.tabs {
+  display: flex;
+  gap: var(--s-1);
+  border-bottom: 1px solid var(--hairline);
+  margin-bottom: var(--s-4);
+}
+
+.tabs__tab {
+  padding: var(--s-2) var(--s-3);
+  margin-bottom: -1px;
+  background: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  color: var(--ink-2);
+}
+.tabs__tab:hover { color: var(--ink); }
+.tabs__tab[aria-selected="true"] {
+  color: var(--accent-ink);
+  border-bottom-color: var(--accent);
+}
+
+/* --------------------------------------------------------------------------
+   Badge — neutral informational chip
+   -------------------------------------------------------------------------- */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-1);
+  padding: 2px var(--s-2);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-pill);
+  background: var(--surface-sunken);
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+.badge--accent {
+  background: var(--accent-tint);
+  border-color: var(--accent-tint);
+  color: var(--accent-ink);
+}
+
+/* --------------------------------------------------------------------------
+   StatusPill — icon + text + colour. NEVER colour alone (§25).
+   The ::before glyph is the shape channel; the text is the label channel.
+   -------------------------------------------------------------------------- */
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px var(--s-2) 2px 6px;
+  border: 1px solid transparent;
+  border-radius: var(--r-pill);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.pill__dot {
+  flex: 0 0 auto;
+  width: 10px;
+  height: 10px;
+  border-radius: var(--r-pill);
+  background: currentColor;
+}
+
+/* Distinct SHAPE per level, so the pill is legible in greyscale and to a
+   colour-blind reader without relying on hue at all. */
+.pill--critical .pill__dot { border-radius: 2px; }                    /* square  */
+.pill--high     .pill__dot { border-radius: var(--r-pill); }          /* circle  */
+.pill--medium   .pill__dot {
+  background: none;
+  border: 2px solid currentColor;                                     /* ring    */
+}
+.pill--low      .pill__dot {
+  background: none;
+  border: 2px solid currentColor;
+  border-radius: 2px;                                                 /* outline square */
+}
+
+.pill--critical {
+  background: var(--risk-critical-tint);
+  border-color: var(--risk-critical);
+  color: var(--risk-critical-ink);
+}
+.pill--high {
+  background: var(--risk-high-tint);
+  border-color: var(--risk-high);
+  color: var(--risk-high-ink);
+}
+.pill--medium {
+  background: var(--risk-medium-tint);
+  border-color: var(--risk-medium);
+  color: var(--risk-medium-ink);
+}
+.pill--low {
+  background: var(--risk-low-tint);
+  border-color: var(--risk-low);
+  color: var(--risk-low-ink);
+}
+.pill--neutral {
+  background: var(--surface-sunken);
+  border-color: var(--hairline);
+  color: var(--ink-2);
+}
+
+.pill--lg { font-size: var(--fs-sm); padding: 4px var(--s-3) 4px var(--s-2); }
+.pill--lg .pill__dot { width: 12px; height: 12px; }
+
+/* --------------------------------------------------------------------------
+   SourceBadge — the honesty indicator. Always visible (§ API plan).
+   -------------------------------------------------------------------------- */
+
+.source-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px var(--s-2);
+  border: 1px solid var(--risk-medium);
+  border-radius: var(--r-md);
+  background: var(--risk-medium-tint);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--risk-medium-ink);
+  white-space: nowrap;
+}
+.source-badge__dot {
+  width: 7px; height: 7px;
+  border-radius: var(--r-pill);
+  background: var(--risk-medium);
+  flex: 0 0 auto;
+}
+.source-badge--live {
+  border-color: var(--risk-low);
+  background: var(--risk-low-tint);
+  color: var(--risk-low-ink);
+}
+.source-badge--live .source-badge__dot { background: var(--risk-low); }
+
+/* --------------------------------------------------------------------------
+   DatasetChip
+   -------------------------------------------------------------------------- */
+
+.dataset-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  max-width: 260px;
+  padding: 3px var(--s-3);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-md);
+  background: var(--surface-sunken);
+  font-size: var(--fs-xs);
+  color: var(--ink-2);
+  text-decoration: none;
+}
+.dataset-chip:hover { border-color: var(--ink-hint); color: var(--ink); }
+.dataset-chip__name {
+  font-weight: 600;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* --------------------------------------------------------------------------
+   AccountMenu
+   -------------------------------------------------------------------------- */
+
+.avatar {
+  width: 28px; height: 28px;
+  border-radius: var(--r-pill);
+  background: var(--accent-tint);
+  color: var(--accent-ink);
+  border: 1px solid var(--accent);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+
+/* --------------------------------------------------------------------------
+   Toast
+   -------------------------------------------------------------------------- */
+
+.toast-region {
+  position: fixed;
+  right: var(--s-6);
+  bottom: var(--s-6);
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  pointer-events: none;
+}
+.toast {
+  pointer-events: auto;
+  min-width: 240px;
+  max-width: 380px;
+  padding: var(--s-3) var(--s-4);
+  background: var(--surface);
+  border: 1px solid var(--ring);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow);
+  font-size: var(--fs-sm);
+}
+.toast--error { border-left-color: var(--risk-critical); }
+.toast--success { border-left-color: var(--risk-low); }
+
+/* --------------------------------------------------------------------------
+   EmptyState
+   -------------------------------------------------------------------------- */
+
+.empty {
+  padding: var(--s-12) var(--s-6);
+  text-align: center;
+  color: var(--ink-2);
+}
+.empty__icon { margin: 0 auto var(--s-3); color: var(--ink-hint); }
+.empty__title { font-size: var(--fs-body); font-weight: 600; color: var(--ink); }
+.empty__msg { margin-top: var(--s-1); font-size: var(--fs-sm); }
+.empty__action { margin-top: var(--s-4); }
+
+/* --------------------------------------------------------------------------
+   InfoNote — the hedging / caveat note. Load-bearing for honesty (§14–§21).
+   -------------------------------------------------------------------------- */
+
+.info-note {
+  display: flex;
+  gap: var(--s-2);
+  padding: var(--s-2) var(--s-3);
+  border-left: 2px solid var(--baseline);
+  background: var(--surface-sunken);
+  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+.info-note__icon { flex: 0 0 auto; color: var(--ink-hint); margin-top: 1px; }
+.info-note--warn {
+  border-left-color: var(--risk-medium);
+  background: var(--risk-medium-tint);
+  color: var(--risk-medium-ink);
+}
+
+/* --------------------------------------------------------------------------
+   Alert — an in-place error, keeps the surrounding UI usable (§32)
+   -------------------------------------------------------------------------- */
+
+.alert {
+  display: flex;
+  gap: var(--s-3);
+  padding: var(--s-3) var(--s-4);
+  border: 1px solid var(--risk-critical);
+  border-left-width: 3px;
+  border-radius: var(--r-md);
+  background: var(--risk-critical-tint);
+  font-size: var(--fs-sm);
+  color: var(--risk-critical-ink);
+}
+.alert__title { font-weight: 600; }
+.alert__body { margin-top: 2px; color: var(--ink); }
+
+/* --------------------------------------------------------------------------
+   Disclosure — "technical detail ▾" / "record values ▾"
+   -------------------------------------------------------------------------- */
+
+.disclosure {
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-md);
+  background: var(--surface);
+}
+.disclosure > summary {
+  padding: var(--s-2) var(--s-3);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  color: var(--ink-2);
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+}
+.disclosure > summary::-webkit-details-marker { display: none; }
+.disclosure > summary::after {
+  content: "";
+  width: 6px; height: 6px;
+  margin-left: auto;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(45deg) translateY(-2px);
+  transition: transform var(--dur-fast) var(--ease);
+}
+.disclosure[open] > summary::after { transform: rotate(-135deg) translateY(-2px); }
+.disclosure[open] > summary { border-bottom: 1px solid var(--hairline); }
+.disclosure__body { padding: var(--s-3); font-size: var(--fs-sm); }
+
+/* ==========================================================================
+   DATA DISPLAY
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   StatTile — hero number, proportional figures (not tabular)
+   -------------------------------------------------------------------------- */
+
+.stat {
+  background: var(--surface);
+  border: 1px solid var(--ring);
+  border-radius: var(--r-md);
+  padding: var(--s-3) var(--s-4);
+}
+.stat__value {
+  font-size: var(--fs-display);
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.015em;
+}
+.stat__label {
+  margin-top: 2px;
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  color: var(--ink-2);
+}
+.stat__sub { margin-top: var(--s-1); font-size: var(--fs-xs); color: var(--ink-hint); }
+.stat__head { display: flex; align-items: center; gap: 6px; margin-bottom: var(--s-1); }
+
+/* --------------------------------------------------------------------------
+   RiskMeter — big percentage + pill. SVG arc, no needle, no glow.
+   -------------------------------------------------------------------------- */
+
+.risk-meter { text-align: center; }
+.risk-meter__figure { position: relative; display: inline-block; }
+.risk-meter__arc-track { fill: none; stroke: var(--hairline); stroke-linecap: round; }
+.risk-meter__arc-value { fill: none; stroke-linecap: round; }
+.risk-meter__value {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding-top: 8px;
+}
+.risk-meter__pct {
+  font-size: 40px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+.risk-meter__pct-unit { font-size: 20px; font-weight: 500; color: var(--ink-2); }
+.risk-meter__caption { margin-top: var(--s-1); font-size: var(--fs-xs); color: var(--ink-hint); }
+
+.risk-meter[data-risk="critical"] .risk-meter__arc-value { stroke: var(--risk-critical); }
+.risk-meter[data-risk="high"]     .risk-meter__arc-value { stroke: var(--risk-high); }
+.risk-meter[data-risk="medium"]   .risk-meter__arc-value { stroke: var(--risk-medium); }
+.risk-meter[data-risk="low"]      .risk-meter__arc-value { stroke: var(--risk-low); }
+
+/* --------------------------------------------------------------------------
+   ProgressPipeline
+   -------------------------------------------------------------------------- */
+
+.pipeline { display: flex; flex-direction: column; }
+
+.pipeline__step {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  padding: var(--s-3) var(--s-3);
+  border-bottom: 1px solid var(--hairline);
+  font-size: var(--fs-sm);
+}
+.pipeline__step:last-child { border-bottom: 0; }
+
+.pipeline__marker {
+  flex: 0 0 auto;
+  width: 20px; height: 20px;
+  border-radius: var(--r-pill);
+  border: 2px solid var(--hairline);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--surface);
+}
+.pipeline__label { flex: 1 1 auto; min-width: 0; color: var(--ink-2); }
+.pipeline__meta {
+  flex: 0 0 auto;
+  font-size: var(--fs-xs);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-hint);
+}
+
+.pipeline__step[data-state="pending"] .pipeline__label { color: var(--ink-hint); }
+
+.pipeline__step[data-state="active"] .pipeline__marker {
+  border-color: var(--accent);
+  background: var(--accent-tint);
+}
+.pipeline__step[data-state="active"] .pipeline__label { color: var(--ink); font-weight: 500; }
+.pipeline__step[data-state="active"] {
+  background: linear-gradient(90deg, var(--accent-tint) 0%, transparent 60%);
+  background-size: 200% 100%;
+  animation: pipeline-shimmer 1.2s var(--ease) infinite;
+}
+
+.pipeline__step[data-state="done"] .pipeline__marker {
+  border-color: var(--risk-low);
+  background: var(--risk-low);
+}
+.pipeline__step[data-state="done"] .pipeline__marker::after { content: "\2713"; }
+.pipeline__step[data-state="done"] .pipeline__label { color: var(--ink); }
+
+.pipeline__step[data-state="failed"] .pipeline__marker {
+  border-color: var(--risk-critical);
+  background: var(--risk-critical);
+}
+.pipeline__step[data-state="failed"] .pipeline__marker::after { content: "\00D7"; font-size: 13px; }
+.pipeline__step[data-state="failed"] { background: var(--risk-critical-tint); }
+.pipeline__step[data-state="failed"] .pipeline__label {
+  color: var(--risk-critical-ink);
+  font-weight: 600;
+}
+
+@keyframes pipeline-shimmer {
+  0%   { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pipeline__step[data-state="active"] {
+    animation: none;
+    background: var(--accent-tint);
+  }
+}
+
+/* --------------------------------------------------------------------------
+   QualityRow / ReadinessList
+   -------------------------------------------------------------------------- */
+
+.kv { display: flex; flex-direction: column; }
+.kv__row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s-3);
+  padding: 6px 0;
+  border-bottom: 1px solid var(--hairline);
+  font-size: var(--fs-sm);
+}
+.kv__row:last-child { border-bottom: 0; }
+.kv__key { flex: 1 1 auto; color: var(--ink-2); min-width: 0; }
+.kv__val {
+  flex: 0 0 auto;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.kv__flag { flex: 0 0 auto; }
+
+.rules { display: flex; flex-direction: column; gap: var(--s-2); }
+.rule {
+  display: flex;
+  gap: var(--s-2);
+  font-size: var(--fs-sm);
+  align-items: flex-start;
+}
+.rule__mark {
+  flex: 0 0 auto;
+  width: 16px;
+  font-weight: 700;
+  text-align: center;
+  margin-top: 1px;
+}
+.rule[data-pass="true"]  .rule__mark { color: var(--risk-low-ink); }
+.rule[data-pass="false"] .rule__mark { color: var(--risk-critical-ink); }
+.rule[data-pass="warn"]  .rule__mark { color: var(--risk-medium-ink); }
+.rule__text { min-width: 0; }
+.rule__why { display: block; color: var(--ink-hint); font-size: var(--fs-xs); }
+
+/* ==========================================================================
+   CHARTS — ChartFrame wraps every chart; the table toggle is the documented
+   relief for the sub-3:1 series colours, not an optional extra.
+   ========================================================================== */
+
+.chart-frame {
+  background: var(--surface);
+  border: 1px solid var(--ring);
+  border-radius: var(--r-md);
+  padding: var(--s-4);
+}
+
+.chart-frame__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s-2);
+  margin-bottom: var(--s-3);
+}
+.chart-frame__title { font-size: var(--fs-body); font-weight: 600; }
+.chart-frame__sub { font-size: var(--fs-xs); color: var(--ink-hint); }
+
+.chart-frame__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-3);
+  margin-bottom: var(--s-3);
+}
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-xs);
+  color: var(--ink-2);   /* text token, never the series colour */
+}
+.legend-item__swatch {
+  width: 10px; height: 10px;
+  border-radius: 2px;
+  flex: 0 0 auto;
+}
+
+.chart-frame__plot { position: relative; }
+.chart-frame__foot {
+  margin-top: var(--s-3);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-2);
+}
+.chart-frame__note { font-size: var(--fs-xs); color: var(--ink-hint); }
+
+/* the [table view] toggle */
+.chart-toggle {
+  background: none;
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-md);
+  padding: 2px var(--s-2);
+  font-size: var(--fs-xs);
+  color: var(--ink-2);
+}
+.chart-toggle:hover { background: var(--surface-hover); color: var(--ink); }
+
+.chart-frame__table { display: none; }
+.chart-frame.is-table .chart-frame__plot  { display: none; }
+.chart-frame.is-table .chart-frame__table { display: block; }
+.chart-frame.is-table .chart-frame__legend { display: none; }
+
+/* --- SVG chart internals ------------------------------------------------ */
+
+.chart-svg { width: 100%; height: auto; display: block; overflow: visible; }
+
+.chart-grid line   { stroke: var(--hairline); stroke-width: 1; }
+.chart-baseline    { stroke: var(--baseline); stroke-width: 1; }
+.chart-zeroline    { stroke: var(--baseline); stroke-width: 1; }
+.chart-reference   { stroke: var(--ink-muted); stroke-width: 1; stroke-dasharray: 3 3; }
+
+/* Axis ticks and tick labels are the ONE place --ink-muted belongs: they are
+   chart chrome sitting on the plot, not UI copy. Everything readers must read
+   as prose uses --ink-hint. */
+.chart-axis-label,
+.chart-tick {
+  font-size: var(--fs-xs);
+  fill: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+.chart-cat-label { font-size: var(--fs-xs); fill: var(--ink-2); }
+.chart-value-label {
+  font-size: var(--fs-xs);
+  fill: var(--ink);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.chart-series-label { font-size: var(--fs-xs); fill: var(--ink-2); font-weight: 500; }
+
+.chart-bar { rx: var(--r-sm); }
+.chart-line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.chart-marker { r: 4; stroke: var(--surface); stroke-width: 2; }
+
+/* status-coloured marks (risk distribution) */
+.mark-critical { fill: var(--risk-critical); }
+.mark-high     { fill: var(--risk-high); }
+.mark-medium   { fill: var(--risk-medium); }
+.mark-low      { fill: var(--risk-low); }
+
+/* categorical marks (models) */
+.mark-s1 { fill: var(--series-1); }
+.mark-s2 { fill: var(--series-2); }
+.mark-s3 { fill: var(--series-3); }
+.mark-s4 { fill: var(--series-4); }
+.stroke-s1 { stroke: var(--series-1); }
+.stroke-s2 { stroke: var(--series-2); }
+.stroke-s3 { stroke: var(--series-3); }
+.stroke-s4 { stroke: var(--series-4); }
+
+/* diverging marks (SHAP) */
+.mark-div-pos-3 { fill: var(--div-pos-3); }
+.mark-div-pos-2 { fill: var(--div-pos-2); }
+.mark-div-pos-1 { fill: var(--div-pos-1); }
+.mark-div-neg-1 { fill: var(--div-neg-1); }
+.mark-div-neg-2 { fill: var(--div-neg-2); }
+.mark-div-neg-3 { fill: var(--div-neg-3); }
+
+/* SHAP direction legend */
+.shap-legend {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+  font-size: var(--fs-xs);
+  color: var(--ink-2);
+  margin-top: var(--s-2);
+  padding-top: var(--s-2);
+  border-top: 1px solid var(--hairline);
+}
+
+/* confusion matrix */
+.matrix { display: inline-block; }
+.matrix__cell {
+  stroke: var(--surface);
+  stroke-width: 2;
+}
+.matrix__cell-label {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* hover layer */
+.chart-hover-target { fill: transparent; cursor: pointer; }
+.chart-hover-target:hover + .chart-bar,
+.chart-bar:hover { filter: brightness(0.93); }
+
+.tooltip {
+  position: absolute;
+  z-index: 30;
+  pointer-events: none;
+  min-width: 120px;
+  padding: var(--s-2) var(--s-3);
+  background: var(--surface);
+  border: 1px solid var(--ring);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow);
+  font-size: var(--fs-xs);
+  line-height: 1.45;
+}
+.tooltip__title { font-weight: 600; margin-bottom: 2px; }
+.tooltip__row { display: flex; gap: var(--s-3); justify-content: space-between; }
+.tooltip__val { font-variant-numeric: tabular-nums; font-weight: 600; }
+
+/* --------------------------------------------------------------------------
+   Texture fill — the accessibility channel. Off by default; enabled by the
+   user setting, by print, or by forced-colors. Never decorative.
+   -------------------------------------------------------------------------- */
+
+[data-texture="on"] .mark-critical,
+[data-texture="on"] .mark-high,
+[data-texture="on"] .mark-medium,
+[data-texture="on"] .mark-low,
+[data-texture="on"] .mark-s1,
+[data-texture="on"] .mark-s2,
+[data-texture="on"] .mark-s3,
+[data-texture="on"] .mark-s4 { mask: url(#texture-lines-45); }
+
+/* The diverging ramp gets OPPOSITE diagonals, one per arm. A single shared
+   direction would stripe both arms identically and disambiguate nothing, and
+   blue<->red is the pair a protanope or deuteranope is most likely to confuse
+   — so this ramp is the one that depends on the texture channel most. */
+[data-texture="on"] .mark-div-neg-1,
+[data-texture="on"] .mark-div-neg-2,
+[data-texture="on"] .mark-div-neg-3 { mask: url(#texture-lines-45); }
+
+[data-texture="on"] .mark-div-pos-1,
+[data-texture="on"] .mark-div-pos-2,
+[data-texture="on"] .mark-div-pos-3 { mask: url(#texture-lines-135); }
+
+/* The sequential ramp is deliberately NOT textured. Magnitude there is carried
+   by lightness, which already survives CVD, greyscale and print; striping seven
+   steps would add noise without adding information. */
+
+/* ==========================================================================
+   3D VIEWER
+   ========================================================================== */
+
+.viewer {
+  position: relative;
+  background: var(--surface-sunken);
+  border: 1px solid var(--ring);
+  border-radius: var(--r-md);
+  overflow: hidden;
+}
+.viewer__canvas { display: block; width: 100%; height: 320px; }
+.viewer__canvas:focus-visible { outline-offset: -2px; }
+
+.viewer__toolbar {
+  position: absolute;
+  top: var(--s-2);
+  right: var(--s-2);
+  display: flex;
+  gap: var(--s-1);
+  padding: 3px;
+  background: var(--surface);
+  border: 1px solid var(--ring);
+  border-radius: var(--r-md);
+}
+.viewer__btn {
+  width: 28px; height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: none;
+  color: var(--ink-2);
+}
+.viewer__btn:hover { background: var(--surface-hover); color: var(--ink); }
+.viewer__btn[aria-pressed="true"] { background: var(--accent-tint); color: var(--accent-ink); }
+
+.viewer__status {
+  position: absolute;
+  left: var(--s-2);
+  bottom: var(--s-2);
+  padding: 3px var(--s-2);
+  background: var(--surface);
+  border: 1px solid var(--ring);
+  border-radius: var(--r-sm);
+  font-size: var(--fs-xs);
+  color: var(--ink-2);
+}
+
+/* the parallel text route into the same information (§25) */
+.component-list { display: flex; flex-direction: column; gap: 2px; }
+.component-list__item {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  width: 100%;
+  padding: var(--s-2) var(--s-3);
+  border: 1px solid transparent;
+  border-radius: var(--r-md);
+  background: none;
+  text-align: left;
+  font-size: var(--fs-sm);
+}
+.component-list__item:hover { background: var(--surface-hover); }
+.component-list__item[aria-current="true"] {
+  border-color: var(--accent);
+  background: var(--accent-tint);
+}
+.component-list__name { flex: 1 1 auto; min-width: 0; }
+
+/* ==========================================================================
+   DROPZONE
+   ========================================================================== */
+
+.dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-2);
+  min-height: 240px;
+  padding: var(--s-6);
+  border: 2px dashed var(--baseline);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  text-align: center;
+}
+.dropzone.is-over {
+  border-color: var(--accent);
+  background: var(--accent-tint);
+}
+.dropzone.is-invalid { border-color: var(--risk-critical); }
+.dropzone__icon { color: var(--ink-hint); }
+.dropzone__title { font-size: var(--fs-body); font-weight: 500; }
+.dropzone__hint { font-size: var(--fs-sm); color: var(--ink-2); }
+.dropzone__limits { font-size: var(--fs-xs); color: var(--ink-hint); }

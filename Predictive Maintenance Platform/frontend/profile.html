@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Machine Profile — Sentinel PdM</title>
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/layout.css">
+<link rel="stylesheet" href="css/components.css">
+<link rel="stylesheet" href="css/responsive.css">
+<style>
+  .profile-grid { display: grid; grid-template-columns: 1fr 2fr; gap: var(--s-6); }
+  @media (max-width: 800px) { .profile-grid { grid-template-columns: 1fr; } }
+  .prof-img { width: 100%; border-radius: var(--radius-md); margin-bottom: var(--s-4); }
+</style>
+</head>
+<body data-page="profile">
+  <header id="site-topbar"></header>
+  <main class="main" id="main">
+    <div id="content">Loading...</div>
+  </main>
+  <footer id="site-footer"></footer>
+<script type="module">
+import './js/app.js';
+import { getMachineById } from './js/api.js';
+import { el, mount, clear, params } from './js/util/dom.js';
+
+async function init() {
+  const container = document.getElementById('content');
+  const id = params().id;
+  if (!id) {
+    container.textContent = 'No machine ID provided.';
+    return;
+  }
+  try {
+    const m = await getMachineById(id);
+    clear(container);
+    
+    const header = el('div', { class: 'page-header' }, [
+      el('div', { class: 'page-header__text' }, [
+        el('h1', { class: 'page-header__title' }, m.name),
+        el('div', { class: 'cluster', style: 'margin-top: var(--s-2)' }, [
+          el('span', { class: 'badge' }, m.type_label),
+          el('span', {}, `${m.manufacturer} ${m.model}`)
+        ])
+      ]),
+      el('div', { class: 'cluster' }, [
+        el('a', { class: 'btn btn--secondary', href: `machine.html?id=${m.id}` }, 'View 3D Model'),
+        el('a', { class: 'btn btn--primary', href: `predict.html?id=${m.id}` }, 'Predict Condition')
+      ])
+    ]);
+    
+    const imgSection = el('div', {}, [
+      el('img', { class: 'prof-img', src: m.image || '', onerror: "this.style.display='none'" }),
+      el('div', { class: 'card' }, [
+        el('h3', {}, 'Description'),
+        el('p', { style: 'margin-top: var(--s-2)' }, m.description)
+      ])
+    ]);
+    
+    const specsTable = el('table', { class: 'table' }, [
+      el('tbody', {}, Object.entries(m.specifications || {}).map(([k,v]) => el('tr', {}, [el('th', {}, k), el('td', {}, v)])))
+    ]);
+    
+    const sensorsTable = el('table', { class: 'table' }, [
+      el('thead', {}, [el('tr', {}, [el('th', {}, 'Sensor'), el('th', {}, 'Unit'), el('th', {}, 'Normal Range'), el('th', {}, 'Warning')])]),
+      el('tbody', {}, (m.sensor_schema||[]).map(s => el('tr', {}, [
+        el('td', {}, s.name),
+        el('td', {}, s.unit),
+        el('td', {}, `${s.normal_min} - ${s.normal_max}`),
+        el('td', {}, `${s.warning_min} - ${s.warning_max}`)
+      ])))
+    ]);
+    
+    const compsTable = el('table', { class: 'table' }, [
+      el('thead', {}, [el('tr', {}, [el('th', {}, 'Component'), el('th', {}, 'Function')])]),
+      el('tbody', {}, (m.components||[]).map(c => el('tr', {}, [el('td', {}, c.name), el('td', {}, c.function)])))
+    ]);
+    
+    const infoSection = el('div', {}, [
+      el('div', { class: 'card', style: 'margin-bottom: var(--s-4)' }, [
+        el('h3', {}, 'Specifications'),
+        el('div', { class: 'table-wrap', style: 'margin-top: var(--s-3)' }, [specsTable])
+      ]),
+      el('div', { class: 'card', style: 'margin-bottom: var(--s-4)' }, [
+        el('h3', {}, 'Operating Parameters'),
+        el('div', { class: 'table-wrap', style: 'margin-top: var(--s-3)' }, [sensorsTable])
+      ]),
+      el('div', { class: 'card' }, [
+        el('h3', {}, 'Components'),
+        el('div', { class: 'table-wrap', style: 'margin-top: var(--s-3)' }, [compsTable])
+      ])
+    ]);
+    
+    const grid = el('div', { class: 'profile-grid section' }, [imgSection, infoSection]);
+    
+    mount(container, header);
+    mount(container, grid);
+    
+  } catch(e) {
+    container.textContent = 'Error loading machine profile.';
+  }
+}
+init();
+</script>
+</body>
+</html>

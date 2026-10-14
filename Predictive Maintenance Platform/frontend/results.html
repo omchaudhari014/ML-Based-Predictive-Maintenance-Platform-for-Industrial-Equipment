@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Analysis Results — Sentinel PdM</title>
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/layout.css">
+<link rel="stylesheet" href="css/components.css">
+<link rel="stylesheet" href="css/responsive.css">
+</head>
+<body data-page="results">
+<a class="skip-link" href="#main">Skip to content</a>
+<header id="site-topbar"></header>
+<main class="main" id="main">
+  <div class="page-header">
+    <div class="page-header__text">
+      <h1 class="page-header__title">Analysis Results</h1>
+      <p class="page-header__sub" id="dataset-info"></p>
+    </div>
+  </div>
+
+  <div id="content-container"></div>
+</main>
+<footer id="site-footer"></footer>
+<script type="module">
+import './js/app.js';
+import { getResults } from './js/api.js';
+import { $, el, mount, clear } from './js/util/dom.js';
+import { int, num } from './js/util/format.js';
+import { horizontalBars, chartFrame, RISK_MARK, riskPill } from './js/charts.js';
+
+const results = getResults();
+const container = $('#content-container');
+
+if (!results) {
+  mount(container, el('div', { class: 'empty' }, [
+    el('div', { class: 'empty__title' }, 'No analysis results found.'),
+    el('div', { class: 'empty__msg' }, 'Please upload a dataset to run an analysis.'),
+    el('a', { class: 'btn btn--primary empty__action', href: 'upload.html' }, 'Go to Upload')
+  ]));
+} else {
+  $('#dataset-info').textContent = `${results.datasetName} · ${int(results.summary.analysed)} records`;
+
+  const s = results.summary;
+  
+  // Row of 4 stats
+  const statRow = el('div', { class: 'row-4', style: 'margin-bottom: var(--s-6); display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--s-4);' }, [
+    el('div', { class: 'stat' }, [
+      el('div', { class: 'stat__value' }, int(s.analysed)),
+      el('div', { class: 'stat__label' }, 'Total Records')
+    ]),
+    el('div', { class: 'stat' }, [
+      el('div', { class: 'stat__value', style: 'color: var(--risk-critical);' }, int(s.critical)),
+      el('div', { class: 'stat__label' }, 'Critical Risk')
+    ]),
+    el('div', { class: 'stat' }, [
+      el('div', { class: 'stat__value', style: 'color: var(--risk-high);' }, int(s.high)),
+      el('div', { class: 'stat__label' }, 'High Risk')
+    ]),
+    el('div', { class: 'stat' }, [
+      el('div', { class: 'stat__value', style: 'color: var(--risk-medium);' }, int(s.medium + s.low)),
+      el('div', { class: 'stat__label' }, 'Medium / Low Risk')
+    ])
+  ]);
+  mount(container, statRow);
+
+  // Risk distribution chart
+  const riskItems = results.riskDistribution.map(r => ({ label: r.label, value: r.count, cls: RISK_MARK[r.level] }));
+  const riskChart = horizontalBars({ items: riskItems, max: s.analysed, ariaLabel: 'Risk distribution' });
+  const chartEl = chartFrame({ title: 'Risk Distribution', plot: riskChart.svg, table: riskChart.table, note: 'Every bar directly labelled.' });
+  mount(container, el('div', { style: 'margin-bottom: var(--s-6);' }, chartEl));
+
+  // Table with tabs
+  const tabWrap = el('div', { class: 'tabs', role: 'tablist' });
+  const levels = ['All', 'Critical', 'High', 'Medium', 'Low'];
+  let currentTab = 'All';
+  const tabBtns = levels.map(l => el('button', { 
+    class: 'tabs__tab', 
+    'aria-selected': l === currentTab ? 'true' : 'false',
+    role: 'tab',
+    onclick: () => setTab(l)
+  }, l));
+  mount(tabWrap, tabBtns);
+  
+  const tableWrap = el('div', { class: 'table-wrap' });
+  
+  function renderTable() {
+    clear(tableWrap);
+    const filtered = currentTab === 'All' 
+      ? results.records 
+      : results.records.filter(r => r.riskLevel.toLowerCase() === currentTab.toLowerCase());
+      
+    const thead = el('thead', {}, [
+      el('tr', {}, [
+        el('th', {}, 'Equipment'),
+        el('th', {}, 'Risk'),
+        el('th', { class: 'num' }, 'Score'),
+        el('th', {}, 'Status'),
+        el('th', {}, 'Main Factor'),
+        el('th', {}, 'Inspection Area'),
+        el('th', {}, 'Action')
+      ])
+    ]);
+    
+    const tbody = el('tbody', {}, filtered.map(r => {
+      const isRisk = r.modelStatus === 'At Risk';
+      const machineName = r.type ? `${r.type} Series (${r.id})` : r.id;
+      return el('tr', {}, [
+        el('td', {}, machineName),
+        el('td', {}, [riskPill(r.riskLevel)]),
+        el('td', { class: 'num' }, `${num(r.probability * 100, 1)} / 100`),
+        el('td', {}, isRisk ? 'At Risk' : 'Normal Operation'),
+        el('td', {}, r.topFactor || '—'),
+        el('td', {}, r.inspectionAreaLabel || '—'),
+        el('td', {}, [
+          el('a', { class: 'btn btn--sm btn--secondary', href: `machine.html?recordId=${r.id}` }, 'Diagnose →')
+        ])
+      ]);
+    }));
+    
+    mount(tableWrap, el('table', { class: 'table' }, [thead, tbody]));
+  }
+  
+  function setTab(tab) {
+    currentTab = tab;
+    tabBtns.forEach(btn => btn.setAttribute('aria-selected', btn.textContent === tab ? 'true' : 'false'));
+    renderTable();
+  }
+
+  mount(container, tabWrap);
+  mount(container, tableWrap);
+  renderTable();
+}
+</script>
+</body>
+</html>

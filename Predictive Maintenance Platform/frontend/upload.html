@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>New Analysis — Sentinel PdM</title>
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/layout.css">
+<link rel="stylesheet" href="css/components.css">
+<link rel="stylesheet" href="css/responsive.css">
+</head>
+<body data-page="upload">
+<a class="skip-link" href="#main">Skip to content</a>
+<header id="site-topbar"></header>
+<main class="main" id="main">
+  <div class="page-header">
+    <div class="page-header__text">
+      <h1 class="page-header__title">New Analysis</h1>
+      <p class="page-header__sub">Upload telemetry data or use the demo dataset.</p>
+    </div>
+  </div>
+
+  <div id="error-container"></div>
+
+  <div class="row-2">
+    <div class="card">
+      <div class="card__eyebrow">Upload CSV</div>
+      <div class="card__body">
+        <div class="field">
+          <label class="field__label" for="file-upload">Select a file (max 1000 records)</label>
+          <input type="file" id="file-upload" class="input" accept=".csv">
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card__eyebrow">Demo Dataset</div>
+      <div class="card__body">
+        <p class="stat__sub" style="margin-bottom: var(--s-3);">Use the built-in demo dataset containing synthetic machine telemetry.</p>
+        <div class="cluster">
+          <select id="demo-size" class="input" style="max-width: 120px;">
+            <option value="1000">1000 records</option>
+            <option value="500">500 records</option>
+            <option value="200">200 records</option>
+            <option value="100">100 records</option>
+          </select>
+          <button type="button" id="btn-demo" class="btn btn--secondary">Load Demo Dataset</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <dialog id="confirm-modal" class="card card--raised" style="margin: auto; max-width: 400px; padding: var(--s-6); border: 1px solid var(--ring); border-radius: var(--r-md);">
+    <h2 class="card__title" style="margin-bottom: var(--s-4);">Confirm Analysis</h2>
+    <div class="kv" style="margin-bottom: var(--s-4);">
+      <div class="kv__row"><span class="kv__key">Dataset</span><span class="kv__val" id="modal-filename"></span></div>
+      <div class="kv__row"><span class="kv__key">Records</span><span class="kv__val" id="modal-records"></span></div>
+      <div class="kv__row"><span class="kv__key">Features</span><span class="kv__val" id="modal-features"></span></div>
+      <div class="kv__row" style="align-items: center;">
+        <span class="kv__key">Model Strategy</span>
+        <span class="kv__val">
+          <select id="modal-model-select" class="input" style="padding: 4px; font-size: 13px;">
+            <option value="auto">Auto — Best PR-AUC</option>
+            <option value="Logistic Regression">Logistic Regression</option>
+            <option value="Random Forest">Random Forest</option>
+            <option value="Gradient Boosting">Gradient Boosting</option>
+            <option value="XGBoost">XGBoost</option>
+          </select>
+        </span>
+      </div>
+    </div>
+    <div class="cluster cluster--between">
+      <button type="button" id="modal-cancel" class="btn btn--secondary">Cancel</button>
+      <button type="button" id="modal-run" class="btn btn--primary">Run Analysis</button>
+    </div>
+  </dialog>
+</main>
+<footer id="site-footer"></footer>
+<script type="module">
+import './js/app.js';
+import { profileDataset, getModelPerformance } from './js/api.js';
+import { clearFlow } from './js/api.js';
+import { el, mount, clear, params, $ } from './js/util/dom.js';
+import { int } from './js/util/format.js';
+
+const fileInput = $('#file-upload');
+const btnDemo = $('#btn-demo');
+const demoSize = $('#demo-size');
+const modal = $('#confirm-modal');
+const errorContainer = $('#error-container');
+
+clearFlow(); // reset any in-flight state
+
+async function handleProfile(input) {
+  clear(errorContainer);
+  try {
+    const { dataset, profile } = await profileDataset(input);
+    
+    $('#modal-filename').textContent = dataset.name;
+    $('#modal-records').textContent = int(profile.counts.records);
+    $('#modal-features').textContent = int(profile.columns.length);
+    
+    modal.showModal();
+  } catch (err) {
+    const alert = el('div', { class: 'alert', style: 'margin-bottom: var(--s-4);' }, [
+      el('div', { class: 'alert__title' }, 'Error'),
+      el('div', { class: 'alert__body' }, err.message)
+    ]);
+    mount(errorContainer, alert);
+  }
+}
+
+fileInput.addEventListener('change', (e) => {
+  if (e.target.files.length > 0) {
+    handleProfile(e.target.files[0]);
+  }
+});
+
+btnDemo.addEventListener('click', () => {
+  const size = parseInt(demoSize.value, 10);
+  handleProfile({ demo: true, demoSize: size });
+});
+
+$('#modal-cancel').addEventListener('click', () => {
+  modal.close();
+  fileInput.value = '';
+});
+
+$('#modal-run').addEventListener('click', () => {
+  const modelStrategy = $('#modal-model-select').value;
+  sessionStorage.setItem('pdm.selectedModel', modelStrategy);
+  window.location.href = 'analysis.html';
+});
+
+if (params().demo === 'true') {
+  handleProfile({ demo: true });
+}
+</script>
+</body>
+</html>

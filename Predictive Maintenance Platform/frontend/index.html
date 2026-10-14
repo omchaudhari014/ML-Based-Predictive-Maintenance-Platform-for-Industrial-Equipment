@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Machines — Sentinel PdM</title>
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/layout.css">
+<link rel="stylesheet" href="css/components.css">
+<link rel="stylesheet" href="css/responsive.css">
+<style>
+  .machines-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: var(--s-5);
+  }
+  .machine-img {
+    width: 100%;
+    height: 180px;
+    object-fit: cover;
+    border-radius: var(--radius-sm);
+    margin-bottom: var(--s-3);
+  }
+  .machine-title {
+    font-size: var(--text-lg);
+    font-weight: bold;
+    margin-bottom: var(--s-1);
+  }
+  .machine-subtitle {
+    color: var(--text-secondary);
+    font-size: var(--text-sm);
+    margin-bottom: var(--s-3);
+  }
+  .machine-desc {
+    font-size: var(--text-sm);
+    margin-bottom: var(--s-4);
+  }
+  .hero-home {
+    text-align: center;
+    padding: var(--s-8) var(--s-4);
+    background: var(--surface-2);
+    margin-bottom: var(--s-6);
+  }
+</style>
+</head>
+<body data-page="home">
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header id="site-topbar"></header>
+  <main class="main" id="main">
+    <div class="hero-home">
+      <h1>Industrial Predictive Maintenance</h1>
+      <p>Search, inspect, and diagnose industrial equipment</p>
+    </div>
+    
+    <div class="section">
+      <div class="card">
+        <input type="search" id="machine-search" class="input" placeholder="Search by name, type, manufacturer, model, or ID..." style="width: 100%; margin-bottom: var(--s-4);">
+        <div id="type-filters" class="cluster"></div>
+      </div>
+    </div>
+    
+    <div class="section machines-grid" id="machines-grid"></div>
+    
+    <div class="section" style="text-align:center; margin-top: var(--s-8);">
+      <a href="upload.html" class="btn btn--secondary">Bulk CSV Analysis &rarr;</a>
+    </div>
+  </main>
+  <footer id="site-footer"></footer>
+<script type="module">
+import './js/app.js';
+import { getMachines, searchMachines } from './js/api.js';
+import { el, mount, clear } from './js/util/dom.js';
+
+let allMachines = [];
+const grid = document.getElementById('machines-grid');
+const searchInput = document.getElementById('machine-search');
+const filtersContainer = document.getElementById('type-filters');
+
+
+let currentDisplayCount = 300;
+let currentList = [];
+
+function renderCards(machines, reset = true) {
+  if (reset) {
+    currentDisplayCount = 300;
+    currentList = machines;
+    clear(grid);
+  }
+  
+  const toShow = currentList.slice(0, currentDisplayCount);
+  
+  if (reset) {
+    if (machines.length === 0) {
+      mount(grid, el('div', { class: 'empty' }, 'No machines found.'));
+      return;
+    }
+  } else {
+    clear(grid);
+  }
+  
+  toShow.forEach(m => {
+    const card = el('div', { class: 'card card--raised' }, [
+      el('img', { 
+        class: 'machine-img', 
+        src: m.image || 'assets/images/placeholder.jpg', 
+        alt: m.name,
+        onerror: "this.style.display='none'"
+      }),
+      el('div', { class: 'machine-title' }, m.name),
+      el('div', { class: 'machine-subtitle' }, `${m.manufacturer} ${m.model}`),
+      el('span', { class: 'badge', style: 'margin-bottom: var(--s-3); display: inline-block;' }, m.type_label),
+      el('div', { class: 'machine-desc' }, m.description),
+      el('div', { class: 'cluster' }, [
+        el('a', { class: 'btn btn--secondary btn--sm', href: `profile.html?id=${m.id}` }, 'View Profile'),
+        el('a', { class: 'btn btn--primary btn--sm', href: `predict.html?id=${m.id}` }, 'Predict')
+      ])
+    ]);
+    mount(grid, card);
+  });
+  
+  if (currentDisplayCount < currentList.length) {
+    const moreBtn = el('button', { class: 'btn btn--secondary', style: 'grid-column: 1 / -1; margin-top: var(--s-4);' }, `Load More (Showing ${currentDisplayCount} of ${currentList.length})`);
+    moreBtn.onclick = () => {
+      currentDisplayCount += 300;
+      renderCards(currentList, false);
+    };
+    mount(grid, moreBtn);
+  }
+}
+
+function renderFilters() {
+  const types = ['all', ...new Set(allMachines.map(m => m.type))];
+  const labels = {
+    'all': 'All Equipment',
+    'induction_motor': 'Motors',
+    'centrifugal_pump': 'Pumps',
+    'screw_compressor': 'Compressors',
+    'industrial_gearbox': 'Gearboxes',
+    'cnc_milling': 'CNC Machines',
+    'steam_turbine': 'Steam Turbines',
+    'industrial_boiler': 'Boilers',
+    'generator': 'Generators'
+  };
+  
+  clear(filtersContainer);
+  types.forEach(t => {
+    const btn = el('button', { class: 'btn btn--sm btn--outline' }, labels[t] || t);
+    btn.onclick = () => {
+      if (t === 'all') renderCards(allMachines);
+      else renderCards(allMachines.filter(m => m.type === t));
+    };
+    mount(filtersContainer, btn);
+  });
+}
+
+async function init() {
+  try {
+    allMachines = await getMachines();
+    renderCards(allMachines);
+    renderFilters();
+  } catch(e) {
+    mount(grid, el('div', { class: 'empty' }, 'Failed to load machines.'));
+  }
+}
+
+let timeout;
+searchInput.addEventListener('input', (e) => {
+  clearTimeout(timeout);
+  timeout = setTimeout(async () => {
+    const q = e.target.value.trim();
+    if (!q) {
+      renderCards(allMachines);
+      return;
+    }
+    try {
+      const results = await searchMachines(q);
+      renderCards(results);
+    } catch(err) {
+      console.error(err);
+    }
+  }, 300);
+});
+
+init();
+</script>
+</body>
+</html>

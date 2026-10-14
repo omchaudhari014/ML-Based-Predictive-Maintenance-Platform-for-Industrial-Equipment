@@ -1,0 +1,159 @@
+/* ==========================================================================
+   responsive.css — 1280 / 1024 / 768 breakpoints, then print
+   Desktop is the primary target (§24); these are graceful reductions.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   <= 1280px — the content column stops being wider than the viewport
+   -------------------------------------------------------------------------- */
+
+@media (max-width: 1280px) {
+  .main { padding-left: var(--s-4); padding-right: var(--s-4); }
+  .topbar { padding: 0 var(--s-4); }
+}
+
+/* --------------------------------------------------------------------------
+   <= 1024px — the 12-col grid folds to two columns; nav loses its labels
+   -------------------------------------------------------------------------- */
+
+@media (max-width: 1024px) {
+  .col-4, .col-5, .col-6, .col-7, .col-8 { grid-column: span 6; }
+
+  .row-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+  .dataset-chip { max-width: 180px; }
+
+  /* Sticky first column so the equipment ID stays visible while scrolling */
+  .table--sticky-first th:first-child,
+  .table--sticky-first td:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    background: var(--surface);
+    box-shadow: 1px 0 0 var(--hairline);
+  }
+  .table--sticky-first thead th:first-child {
+    z-index: 3;
+    background: var(--surface-sunken);
+  }
+  .table--sticky-first tbody tr:hover td:first-child { background: var(--surface-hover); }
+
+  .hero { padding-top: var(--s-8); }
+  .hero__title { font-size: 28px; }
+}
+
+/* --------------------------------------------------------------------------
+   <= 768px — single column throughout
+   -------------------------------------------------------------------------- */
+
+@media (max-width: 768px) {
+  .col-4, .col-5, .col-6, .col-7, .col-8, .col-12 { grid-column: span 12; }
+
+  .row-2, .row-3 { grid-template-columns: minmax(0, 1fr); }
+
+  .tile-row { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
+
+  .main { padding-top: var(--s-6); }
+
+  /* the primary nav collapses into a horizontally scrollable strip */
+  .topbar {
+    gap: var(--s-2);
+    padding: 0 var(--s-3);
+  }
+  .topbar__nav {
+    margin-left: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .topbar__nav::-webkit-scrollbar { display: none; }
+
+  /* the dataset chip is the first thing to go — it is redundant with the page
+     subtitle, which repeats the dataset name */
+  .dataset-chip { display: none; }
+
+  .page-header { align-items: flex-start; }
+  .page-header__actions { width: 100%; }
+  .page-header__actions .btn { flex: 1 1 auto; }
+
+  .hero__title { font-size: 26px; }
+  .hero__lead { font-size: var(--fs-body); }
+  .hero__actions .btn { flex: 1 1 auto; }
+
+  .viewer__canvas { height: 260px; }
+
+  .toast-region { left: var(--s-3); right: var(--s-3); bottom: var(--s-3); }
+  .toast { max-width: none; }
+
+  .stat__value { font-size: 26px; }
+  .risk-meter__pct { font-size: 34px; }
+}
+
+/* --------------------------------------------------------------------------
+   PRINT — light theme prints as-is. Charts become tables; nav and 3D go away.
+   -------------------------------------------------------------------------- */
+
+@media print {
+  :root {
+    --page: #ffffff;
+    --surface: #ffffff;
+    --surface-sunken: #ffffff;
+    --surface-hover: #ffffff;
+  }
+
+  body { font-size: 11pt; }
+
+  .topbar,
+  .footer,
+  .toast-region,
+  .skip-link,
+  .breadcrumb,
+  .page-header__actions,
+  .viewer,
+  .chart-toggle,
+  .hero__actions { display: none !important; }
+
+  .main { max-width: none; padding: 0; }
+
+  .card,
+  .chart-frame,
+  .stat,
+  .table-wrap {
+    border-color: #999;
+    box-shadow: none;
+    break-inside: avoid;
+  }
+
+  /* charts print as their table view, which is the accessible equivalent */
+  .chart-frame__plot,
+  .chart-frame__legend { display: none !important; }
+  .chart-frame__table  { display: block !important; }
+
+  /* collapsed disclosures print open — a printout has no interaction */
+  .disclosure__body { display: block !important; }
+
+  .table thead th { position: static; }
+
+  a[href^="http"]::after { content: " (" attr(href) ")"; font-size: 9pt; color: #555; }
+
+  .section { break-inside: avoid; }
+}
+
+/* --------------------------------------------------------------------------
+   FORCED COLORS — let the OS palette through, keep the shape channels
+   -------------------------------------------------------------------------- */
+
+@media (forced-colors: active) {
+  .card,
+  .chart-frame,
+  .stat,
+  .table-wrap,
+  .pill,
+  .badge,
+  .source-badge { border: 1px solid CanvasText; }
+
+  .pill__dot { forced-color-adjust: none; }
+
+  .btn { border: 1px solid ButtonText; }
+
+  :focus-visible { outline: 2px solid Highlight; }
+}

@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Analysis Pipeline — Sentinel PdM</title>
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/layout.css">
+<link rel="stylesheet" href="css/components.css">
+<link rel="stylesheet" href="css/responsive.css">
+</head>
+<body data-page="analysis">
+<a class="skip-link" href="#main">Skip to content</a>
+<header id="site-topbar"></header>
+<main class="main" id="main" style="display: flex; align-items: center; justify-content: center; min-height: 60vh;">
+  <div class="card card--raised" style="width: 100%; max-width: 400px;">
+    <h2 class="card__title" style="margin-bottom: var(--s-4);">Running Analysis</h2>
+    <div class="pipeline" id="pipeline-container">
+      <div class="pipeline__step" data-step="load" data-state="pending">
+        <span class="pipeline__marker"></span>
+        <span class="pipeline__label">Load Data</span>
+      </div>
+      <div class="pipeline__step" data-step="validate" data-state="pending">
+        <span class="pipeline__marker"></span>
+        <span class="pipeline__label">Validate</span>
+      </div>
+      <div class="pipeline__step" data-step="preprocess" data-state="pending">
+        <span class="pipeline__marker"></span>
+        <span class="pipeline__label">Preprocess</span>
+      </div>
+      <div class="pipeline__step" data-step="features" data-state="pending">
+        <span class="pipeline__marker"></span>
+        <span class="pipeline__label">Score Records</span>
+      </div>
+      <div class="pipeline__step" data-step="compare" data-state="pending">
+        <span class="pipeline__marker"></span>
+        <span class="pipeline__label">Compare Models</span>
+      </div>
+      <div class="pipeline__step" data-step="done" data-state="pending">
+        <span class="pipeline__marker"></span>
+        <span class="pipeline__label">Complete</span>
+      </div>
+    </div>
+    <div id="error-container" style="margin-top: var(--s-4);"></div>
+  </div>
+</main>
+<footer id="site-footer"></footer>
+<script type="module">
+import './js/app.js';
+import { runAnalysis } from './js/api.js';
+import { $$, $, el, mount } from './js/util/dom.js';
+
+const steps = $$('.pipeline__step');
+let currentActive = -1;
+
+function onStep({ key, state }) {
+  const stepEl = $(`[data-step="${key}"]`);
+  if (stepEl) {
+    if (state === 'done') {
+      stepEl.setAttribute('data-state', 'done');
+      const next = stepEl.nextElementSibling;
+      if (next && next.getAttribute('data-state') === 'pending') {
+        next.setAttribute('data-state', 'active');
+      }
+    } else {
+      stepEl.setAttribute('data-state', state);
+    }
+  }
+}
+
+(async () => {
+  try {
+    steps[0].setAttribute('data-state', 'active');
+    await runAnalysis(onStep);
+    setTimeout(() => {
+      window.location.href = 'results.html';
+    }, 1000);
+  } catch (err) {
+    const errorContainer = $('#error-container');
+    const alert = el('div', { class: 'alert' }, [
+      el('div', { class: 'alert__title' }, 'Analysis Failed'),
+      el('div', { class: 'alert__body' }, err.message)
+    ]);
+    mount(errorContainer, alert);
+    
+    steps.forEach(s => {
+      if (s.getAttribute('data-state') === 'active') {
+        s.setAttribute('data-state', 'failed');
+      }
+    });
+  }
+})();
+</script>
+</body>
+</html>

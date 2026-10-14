@@ -1,0 +1,80 @@
+{
+  "_doc": "Equipment-configurable component mapping (§33). This layer is INDEPENDENT of any ML code. A backend response of {\"inspection_area\": \"drive_assembly\"} maps here to a named 3D mesh group and a human label. Highlighting is deterministic — driven by the predicted failure mode and top contributing factor, never random. The highlighted part is a PROBABLE INSPECTION AREA, not a physically confirmed fault.",
+  "_version": "1.0.0",
+  "defaultProfile": "cnc_milling",
+  "profiles": {
+    "cnc_milling": {
+      "id": "cnc_milling",
+      "label": "CNC Milling / Rotating Spindle Machine",
+      "geometryKey": "rotating_spindle",
+      "description": "A generic rotating-spindle machining centre consistent with the AI4I sensor set: air/process temperature, rotational speed, torque, and tool wear.",
+      "components": [
+        {
+          "id": "spindle",
+          "label": "Spindle",
+          "meshNames": ["spindle", "spindle_shaft", "spindle_nose"],
+          "role": "Rotates the cutting tool at the commanded speed.",
+          "info": "The rotating shaft that holds and drives the tool. Sensitive to speed and balance; wear or imbalance shows up as vibration and heat."
+        },
+        {
+          "id": "drive_assembly",
+          "label": "Drive / Tool Assembly",
+          "meshNames": ["drive_assembly", "drive_housing", "gear"],
+          "role": "Transmits motor torque to the spindle.",
+          "info": "Couples motor output to the spindle. Sustained high torque combined with tool wear raises mechanical strain here first."
+        },
+        {
+          "id": "tool_holder",
+          "label": "Tool Holder",
+          "meshNames": ["tool_holder", "collet", "tool_tip"],
+          "role": "Clamps the cutting tool to the spindle.",
+          "info": "Holds the cutting tool. Accumulated tool wear degrades cut quality and can transfer load back into the holder and spindle."
+        },
+        {
+          "id": "bearing_housing",
+          "label": "Bearing Housing",
+          "meshNames": ["bearing_housing", "bearing_front", "bearing_rear"],
+          "role": "Supports the rotating spindle.",
+          "info": "Carries the spindle bearings. Overstrain and vibration shorten bearing life; failure here escalates quickly to spindle damage."
+        },
+        {
+          "id": "coolant_line",
+          "label": "Coolant Line",
+          "meshNames": ["coolant_line", "coolant_nozzle", "coolant_pipe"],
+          "role": "Removes heat from the cut zone.",
+          "info": "Delivers coolant to the tool/work interface. When process temperature approaches ambient with low airflow, heat is not being dissipated — the coolant path is the first thing to check."
+        },
+        {
+          "id": "motor",
+          "label": "Drive Motor",
+          "meshNames": ["motor", "motor_body", "motor_fins"],
+          "role": "Provides mechanical power to the drive.",
+          "info": "The prime mover. Power delivered is torque × angular speed; when that product leaves the safe band, the motor and its drive electronics are the probable area."
+        }
+      ],
+      "modeToComponent": {
+        "TWF": "tool_holder",
+        "HDF": "coolant_line",
+        "PWF": "motor",
+        "OSF": "drive_assembly",
+        "RNF": "spindle",
+        "none": null
+      },
+      "factorToComponent": {
+        "Torque": "drive_assembly",
+        "Tool wear": "tool_holder",
+        "Process temperature": "coolant_line",
+        "Air temperature": "coolant_line",
+        "Rotational speed": "motor"
+      },
+      "modeLabels": {
+        "TWF": "Tool Wear Failure",
+        "HDF": "Heat Dissipation Failure",
+        "PWF": "Power Failure",
+        "OSF": "Overstrain Failure",
+        "RNF": "Random Failure",
+        "none": "No failure predicted"
+      }
+    }
+  }
+}

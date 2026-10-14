@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Model Performance — Sentinel PdM</title>
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/layout.css">
+<link rel="stylesheet" href="css/components.css">
+<link rel="stylesheet" href="css/responsive.css">
+</head>
+<body data-page="models">
+<a class="skip-link" href="#main">Skip to content</a>
+<header id="site-topbar"></header>
+<main class="main" id="main">
+  <div class="page-header">
+    <div class="page-header__text">
+      <h1 class="page-header__title">Model Performance</h1>
+      <p class="page-header__sub">Trained on the AI4I 2020 predictive maintenance dataset.</p>
+    </div>
+  </div>
+  
+  <div class="info-note" style="margin-bottom: var(--s-6);">
+    <strong>Class Imbalance Note:</strong> With roughly a 9:1 healthy-to-failure ratio, a model that predicts 'no failure' for every record would still score ~0.90 accuracy while catching zero failures. That is why the comparison leads with Precision, Recall, F1 and PR-AUC, and de-emphasises Accuracy.
+  </div>
+
+  <div id="content-container"></div>
+</main>
+<footer id="site-footer"></footer>
+<script type="module">
+import './js/app.js';
+import { getModelPerformance } from './js/api.js';
+import { el, mount } from './js/util/dom.js';
+import { num } from './js/util/format.js';
+import { lineChart, confusionMatrix, chartFrame, SERIES_STROKE, SERIES_COLOR } from './js/charts.js';
+
+const container = document.getElementById('content-container');
+
+(async () => {
+  try {
+    const perf = await getModelPerformance();
+    const models = perf.models;
+    const selected = perf.selection.selected;
+
+    // Table
+    const thead = el('thead', {}, [
+      el('tr', {}, [
+        el('th', {}, 'Model'),
+        el('th', { class: 'num' }, 'Precision'),
+        el('th', { class: 'num' }, 'Recall'),
+        el('th', { class: 'num' }, 'F1'),
+        el('th', { class: 'num' }, 'ROC-AUC'),
+        el('th', { class: 'num' }, 'PR-AUC'),
+        el('th', { class: 'num t-ink-2' }, 'Accuracy')
+      ])
+    ]);
+    
+    const tbody = el('tbody', {}, models.map(m => {
+      const isSel = m.name === selected;
+      return el('tr', { class: isSel ? 'is-selected' : '' }, [
+        el('td', {}, [
+          m.name,
+          isSel ? el('span', { class: 'badge', style: 'margin-left: 8px;' }, 'Selected') : null
+        ]),
+        el('td', { class: 'num' }, num(m.precision, 3)),
+        el('td', { class: 'num' }, num(m.recall, 3)),
+        el('td', { class: 'num' }, num(m.f1, 3)),
+        el('td', { class: 'num' }, num(m.rocAuc, 3)),
+        el('td', { class: 'num', style: isSel ? 'font-weight: 700;' : '' }, num(m.prAuc, 3)),
+        el('td', { class: 'num t-ink-2' }, num(m.accuracy, 3))
+      ]);
+    }));
+
+    mount(container, el('div', { class: 'card', style: 'margin-bottom: var(--s-6);' }, [
+      el('div', { class: 'table-wrap' }, [
+        el('table', { class: 'table' }, [thead, tbody])
+      ])
+    ]));
+
+    // Charts
+    const row = el('div', { class: 'row-2' });
+    
+    // ROC Curve
+    const roc = lineChart({
+      series: models.map((m, i) => ({ name: m.name, cls: SERIES_STROKE[i], points: m.roc })),
+      xLabel: 'False positive rate', yLabel: 'True positive rate', reference: true, ariaLabel: 'ROC Curves'
+    });
+    mount(row, chartFrame({
+      title: 'ROC Curves',
+      legend: models.map((m, i) => ({ label: m.name, color: SERIES_COLOR[i] })),
+      plot: roc.svg
+    }));
+
+    // Confusion Matrix for Selected
+    const selModelObj = models.find(m => m.name === selected) || models[0];
+    const cm = confusionMatrix(selModelObj.confusion);
+    mount(row, chartFrame({
+      title: 'Confusion Matrix',
+      sub: selected,
+      plot: cm.svg,
+      table: cm.table
+    }));
+
+    mount(container, row);
+
+  } catch(e) {
+    mount(container, el('div', { class: 'alert' }, e.message));
+  }
+})();
+</script>
+</body>
+</html>

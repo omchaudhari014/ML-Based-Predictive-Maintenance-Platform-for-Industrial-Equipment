@@ -1,0 +1,72 @@
+{
+  "_doc": "DEMO SCORING reference data. These model-comparison metrics are illustrative benchmark figures for the demo and are shown behind a persistent 'DEMO SCORING' badge — no trained model is connected in this build. Per-record risk is NOT taken from here; it is computed by mock/mock-api.js from a documented transparent surrogate. The winning model is DERIVED by reducing over selection.criterionKey, never hard-coded (§11).",
+  "generatedFor": "demo-equipment-1000.csv",
+  "selection": {
+    "criterion": "highest PR-AUC",
+    "criterionKey": "prAuc",
+    "note": "At a strong class imbalance, Precision-Recall AUC reflects performance on the rare failure class far better than accuracy or ROC-AUC. The model with the highest PR-AUC is selected. Change criterionKey to reselect with no code change."
+  },
+  "classImbalanceNote": "With roughly a 9:1 healthy-to-failure ratio, a model that predicts 'no failure' for every record would still score about 0.90 accuracy while catching zero failures. That is why the comparison leads with Precision, Recall, F1 and PR-AUC, and de-emphasises Accuracy.",
+  "models": [
+    {
+      "name": "Logistic Regression",
+      "precision": 0.72, "recall": 0.61, "f1": 0.66, "rocAuc": 0.941, "prAuc": 0.68, "accuracy": 0.958,
+      "confusion": { "tp": 68, "fp": 26, "fn": 44, "tn": 862 },
+      "roc": [[0,0],[0.03,0.42],[0.08,0.63],[0.17,0.78],[0.34,0.9],[0.6,0.97],[1,1]],
+      "pr":  [[0,0.9],[0.2,0.82],[0.4,0.75],[0.61,0.68],[0.8,0.5],[1,0.19]]
+    },
+    {
+      "name": "Random Forest",
+      "precision": 0.81, "recall": 0.74, "f1": 0.77, "rocAuc": 0.968, "prAuc": 0.812, "accuracy": 0.969,
+      "confusion": { "tp": 83, "fp": 19, "fn": 29, "tn": 869 },
+      "roc": [[0,0],[0.02,0.55],[0.05,0.74],[0.12,0.86],[0.26,0.94],[0.5,0.98],[1,1]],
+      "pr":  [[0,0.95],[0.2,0.92],[0.4,0.88],[0.6,0.82],[0.74,0.75],[0.9,0.55],[1,0.2]]
+    },
+    {
+      "name": "Gradient Boosting",
+      "precision": 0.83, "recall": 0.70, "f1": 0.76, "rocAuc": 0.966, "prAuc": 0.79, "accuracy": 0.968,
+      "confusion": { "tp": 78, "fp": 16, "fn": 34, "tn": 872 },
+      "roc": [[0,0],[0.02,0.5],[0.05,0.71],[0.12,0.84],[0.27,0.93],[0.52,0.98],[1,1]],
+      "pr":  [[0,0.94],[0.2,0.9],[0.4,0.85],[0.6,0.8],[0.7,0.74],[0.9,0.52],[1,0.2]]
+    },
+    {
+      "name": "XGBoost",
+      "precision": 0.86, "recall": 0.68, "f1": 0.76, "rocAuc": 0.971, "prAuc": 0.799, "accuracy": 0.970,
+      "confusion": { "tp": 76, "fp": 12, "fn": 36, "tn": 876 },
+      "roc": [[0,0],[0.015,0.52],[0.04,0.73],[0.1,0.86],[0.24,0.94],[0.49,0.99],[1,1]],
+      "pr":  [[0,0.96],[0.2,0.93],[0.4,0.87],[0.6,0.8],[0.68,0.76],[0.9,0.5],[1,0.2]]
+    }
+  ],
+  "modeContent": {
+    "OSF": {
+      "consequence": "Sustained high torque combined with advanced tool wear raises mechanical strain on the drive and tool assembly. Left unaddressed, this can accelerate wear of the drive train and bearings and, in the worst case, lead to spindle binding or an unplanned machine stoppage.",
+      "recommendation": { "priority": "HIGH", "action": "Inspect the drive / tool assembly and review tool condition before continued operation. Reduce feed or torque demand until inspected." },
+      "chain": { "factor": "High torque with advanced tool wear", "effect": "Mechanical strain on the drive train rises above its design envelope", "component": "Drive / Tool Assembly", "consequence": "Accelerated drive/bearing wear, risk of spindle binding or stoppage" }
+    },
+    "TWF": {
+      "consequence": "Tool wear is approaching end-of-life. As the cutting edge degrades, cutting forces rise, surface finish deteriorates, and the risk of sudden tool breakage increases — which can damage the workpiece and the holder.",
+      "recommendation": { "priority": "MEDIUM", "action": "Schedule a tool change and inspect the tool holder for run-out. Verify wear-offset compensation before the next batch." },
+      "chain": { "factor": "Tool wear near end-of-life", "effect": "Cutting edge degrades and cut forces rise", "component": "Tool Holder", "consequence": "Poor surface finish, scrap parts, possible tool breakage" }
+    },
+    "HDF": {
+      "consequence": "Process temperature is close to ambient while airflow is low, indicating heat is not being carried away from the cut zone. Continued operation risks thermal damage to the tool and workpiece and dimensional drift in the finished part.",
+      "recommendation": { "priority": "HIGH", "action": "Check the coolant line for flow and blockage and verify airflow around the spindle before resuming. Confirm coolant concentration and nozzle aim." },
+      "chain": { "factor": "Process temperature near ambient with low airflow", "effect": "Heat is not being dissipated from the cut zone", "component": "Coolant Line", "consequence": "Thermal damage to tool/workpiece and dimensional drift" }
+    },
+    "PWF": {
+      "consequence": "Delivered mechanical power (torque × rotational speed) is outside the safe operating band. The motor and its drive electronics are operating outside their design envelope, which risks an overload trip or long-term stress on the drive.",
+      "recommendation": { "priority": "HIGH", "action": "Review the speed/torque set-points against the machine's power curve. Inspect the drive motor and its electronics for overload indications before continued operation." },
+      "chain": { "factor": "Power (torque × speed) outside the safe band", "effect": "Motor and drive operate outside their design envelope", "component": "Drive Motor", "consequence": "Overload trip or accelerated drive-electronics stress" }
+    },
+    "RNF": {
+      "consequence": "The pattern does not match a specific wear or thermal mode but the contributing factors are elevated. Treat this as a general check rather than a mode-specific fault.",
+      "recommendation": { "priority": "LOW", "action": "Log the reading and re-check on the next cycle. No immediate mode-specific action indicated." },
+      "chain": { "factor": "Elevated readings without a dominant mode", "effect": "General operating stress above baseline", "component": "Spindle", "consequence": "Minor — monitor for a developing trend" }
+    },
+    "none": {
+      "consequence": "No failure mode is predicted for this record. Contributing factors are within their normal operating range.",
+      "recommendation": { "priority": "LOW", "action": "No action required. Continue normal operation and monitoring." },
+      "chain": { "factor": "Readings within normal range", "effect": "No abnormal operating stress", "component": "—", "consequence": "None indicated" }
+    }
+  }
+}
