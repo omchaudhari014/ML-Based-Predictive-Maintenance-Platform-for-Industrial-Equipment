@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "sentinel-pdm",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "5510", "--directory", "C:/Predictive Maintenance Platform"],
+      "port": 5510
+    }
+  ]
+}
